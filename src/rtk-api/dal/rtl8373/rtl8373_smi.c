@@ -203,8 +203,8 @@ rtk_int32 rtl8373_smi_read(rtk_uint32 mAddrs, rtk_uint32 *rData)
 #endif
 #if defined(MDC_MDIO_OPERATION)
 	rtk_uint32 regData=0;
-	rtk_uint16 datah=0;
-	rtk_uint16 datal=0;
+	rtk_uint32 datah=0;
+	rtk_uint32 datal=0;
 #endif
 
 
@@ -346,8 +346,8 @@ rtk_int32 rtl8373_smi_write(rtk_uint32 mAddrs, rtk_uint32 rData)
 
 #if defined(MDC_MDIO_OPERATION)
 	rtk_uint32 regData=0;
-	rtk_uint16 datal;
-    rtk_uint16 datah;
+	rtk_uint32 datal;
+    rtk_uint32 datah;
 #endif
 
 
