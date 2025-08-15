@@ -260,7 +260,7 @@ ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 	return -1;
 	}
 
-	pRmacfg.operation = 0;                   // 清零配置
+	pRmacfg.operation = RMAOP_FORWARD;                   // 清零配置
 	ret = rtk_rma_set(2u, &pRmacfg);
 	if ( ret )
 	{
@@ -383,7 +383,7 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, gsw);
 	mutex_init(&rtl_mii_lock);
-
+	_gsw = gsw;
 	init_rtl837x_gsw(gsw);
 
 	ret = rtl837x_swconfig_init(gsw);
@@ -410,7 +410,7 @@ static struct platform_driver gsw_driver = {
 	.probe = rtl837x_gsw_probe,
 	.remove = rtl837x_gsw_remove,
 	.driver = {
-		.name = "rtk-gsw",
+		.name = "rtl837x-gsw",
 		.of_match_table = rtk_gsw_match,
 	},
 };

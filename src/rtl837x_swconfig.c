@@ -47,7 +47,6 @@ int rtl837x_sw_apply_config(struct switch_dev *swdev)
 
 	printk("rtl837x Apply Config\n");
     
-	// TODO
     // ====================== 1. 应用流控配置 ======================
     printk("rtl837x Apply flow control\n");
     for (int port = 0; port < gsw->num_ports; port++) {
@@ -58,7 +57,7 @@ int rtl837x_sw_apply_config(struct switch_dev *swdev)
                 .Full_10 = 1,
                 .Half_100 = 1,
                 .Full_100 = 1,
-                .Half_1000 = 1,
+                .Half_1000 = 0,
                 .Full_1000 = 1,
                 .adv_2_5G = 1,
                 .adv_5G = 0,
@@ -274,7 +273,6 @@ int rtl837x_sw_set_port_pvid_u(struct switch_dev *dev, int port, int val)
 
     gsw->port_pvid[port] = val;
 
-	// rtl837x_apply_config(dev);
     return 0;
 }
 EXPORT_SYMBOL_GPL(rtl837x_sw_set_port_pvid_u);
@@ -292,11 +290,10 @@ static uint32_t convert_speed_code(uint32_t speed_code)
         case 0:		return SWITCH_PORT_SPEED_10;
         case 1:   	return SWITCH_PORT_SPEED_100;
         case 2:     return SWITCH_PORT_SPEED_1000;
-        case 3:   	return SWITCH_PORT_SPEED_UNKNOWN;
         case 4:    	return SWITCH_PORT_SPEED_10000;
         case 5:    	return SWITCH_PORT_SPEED_2500;
         case 6:    	return SWITCH_PORT_SPEED_5000;
-        default:                return 0; // 未知状态
+        default:    return SWITCH_PORT_SPEED_UNKNOWN; // 未知状态
     }
 }
 
@@ -315,7 +312,7 @@ int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, struct swi
     
     // 获取MAC状态信息
     rtk_port_status_t port_status;
-    ret = rtk_port_macStatus_get(port, &port_status);
+    ret = rtk_port_macStatus_get(phy_port, &port_status);
     if(ret)
 	{
         dev_err(gsw->dev, 
@@ -494,7 +491,7 @@ static struct switch_attr rtl837x_port[] = {
 
 static const struct switch_dev_ops rtl8372n_sw_ops = {
     .attr_global = { .attr = rtl832n_globals, .n_attr = ARRAY_SIZE(rtl832n_globals)},
-    .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
+    // .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
     .attr_vlan = { .attr = NULL, .n_attr = 0 },
 
 	.get_vlan_ports = rtl837x_sw_get_vlan_ports_u,
