@@ -2670,7 +2670,7 @@ void RTCT_para_6818C_231206(rtk_uint32 phymask)
  
 	 dal_rtl8373_phy_regbits_write(1<<phyId, 30, 0x75f3, 1, 0);
 	 dal_rtl8373_phy_regbits_write(1<<phyId, 30, 0x697a, 0x3f, sds_mode);
-#if EEE_ENABLE
+#if defined EEE_ENABLE
 	 dal_rtl8373_phy_regbits_write(1<<phyId, 31, 0xa432, 1<<5, 1);
 	 dal_rtl8373_phy_regbits_write(1<<phyId, 7, 0x3e, 1, 1);
 #endif

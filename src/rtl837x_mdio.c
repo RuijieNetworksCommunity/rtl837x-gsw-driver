@@ -10,6 +10,7 @@
 #include <linux/gpio/consumer.h>
 #include <linux/switch.h>
 #include <linux/mutex.h>
+#include <linux/platform_device.h>
 
 #include "./rtl837x_common.h"
 
@@ -98,7 +99,7 @@ unsigned int mii_mgr_write(unsigned int phy_addr,
 	return 0;
 }
 
-char* chipid_to_chip_name(switch_chip_t id)
+static char* chipid_to_chip_name(switch_chip_t id)
 {
     switch (id)
     {
@@ -184,7 +185,7 @@ static int rtl837x_hw_reset(struct rtk_gsw *gsw)
 	return 0;
 }
 
-const static struct rtl837x_sdsmode_map _rtl837x_sdsmode[] = {
+static const struct rtl837x_sdsmode_map _rtl837x_sdsmode[] = {
 	{ SERDES_10GQXG, "10g-qxg" },
 	{ SERDES_10GUSXG, "10g-usxg" },
 	{ SERDES_10GR, "10g-kr" },
@@ -241,7 +242,7 @@ static int rtl8372n_hw_init(struct rtk_gsw *gsw)
 	return 0;
 }
 
-ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
+static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 {
 	ret_t ret;
 
@@ -396,6 +397,7 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	return 0;
 }
 
+#if 1
 static int rtl837x_gsw_remove(struct platform_device *pdev)
 {
 	struct rtk_gsw *gsw = platform_get_drvdata(pdev);
@@ -403,8 +405,21 @@ static int rtl837x_gsw_remove(struct platform_device *pdev)
 	unregister_switch(&gsw->sw_dev);
 	rtl837x_debug_proc_deinit();
 	platform_set_drvdata(pdev, NULL);
+
 	return 0;
 }
+#else
+static void rtl837x_gsw_remove(struct platform_device *pdev)
+{
+	struct rtk_gsw *gsw = platform_get_drvdata(pdev);
+
+	unregister_switch(&gsw->sw_dev);
+	rtl837x_debug_proc_deinit();
+	platform_set_drvdata(pdev, NULL);
+}
+#endif
+
+
 
 static struct platform_driver gsw_driver = {
 	.probe = rtl837x_gsw_probe,

@@ -23,7 +23,7 @@
 #define SWITCH_PORT_SPEED_5000 5000
 #endif
 
-int rtl837x_sw_get_port_stats_u(struct switch_dev *dev, int port,struct switch_port_stats *stats)
+static int rtl837x_sw_get_port_stats_u(struct switch_dev *dev, int port,struct switch_port_stats *stats)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
@@ -31,7 +31,6 @@ int rtl837x_sw_get_port_stats_u(struct switch_dev *dev, int port,struct switch_p
 	rtk_stat_port_get(gsw->port_map[port], 2u, &(stats->rx_bytes));                // rx_bytes
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_get_port_stats_u);
 
 /**
  * @brief 应用交换机配置
@@ -39,7 +38,7 @@ EXPORT_SYMBOL_GPL(rtl837x_sw_get_port_stats_u);
  * @param switch_dev 交换机设备结构指针
  * @return int 返回状态码 (0 = 成功)
  */
-int rtl837x_sw_apply_config(struct switch_dev *swdev)
+static int rtl837x_sw_apply_config(struct switch_dev *swdev)
 {
     struct rtk_gsw *gsw = container_of(swdev, struct rtk_gsw, sw_dev);
 
@@ -80,7 +79,6 @@ int rtl837x_sw_apply_config(struct switch_dev *swdev)
         }
     }
     
-
     // ====================== 2. 应用VLAN配置 ======================
     if (gsw->global_vlan_enable)
     {
@@ -159,10 +157,8 @@ int rtl837x_sw_apply_config(struct switch_dev *swdev)
     
     return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_apply_config);
 
-
-int rtl837x_sw_get_vlan_ports_u(struct switch_dev *dev, struct switch_val *val)
+static int rtl837x_sw_get_vlan_ports_u(struct switch_dev *dev, struct switch_val *val)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
@@ -185,7 +181,6 @@ int rtl837x_sw_get_vlan_ports_u(struct switch_dev *dev, struct switch_val *val)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_get_vlan_ports_u);
 
 /**
  * @brief 设置 VLAN 的端口成员
@@ -194,7 +189,7 @@ EXPORT_SYMBOL_GPL(rtl837x_sw_get_vlan_ports_u);
  * @param vlan_val VLAN 值结构指针
  * @return 返回状态码 (0 = 成功)
  */
-int rtl837x_sw_set_vlan_ports(struct switch_dev *dev, struct switch_val *vlan_val)
+static int rtl837x_sw_set_vlan_ports(struct switch_dev *dev, struct switch_val *vlan_val)
 {
     // 获取 VLAN ID
     rtk_uint32 vlan_id = vlan_val->port_vlan;
@@ -246,9 +241,8 @@ int rtl837x_sw_set_vlan_ports(struct switch_dev *dev, struct switch_val *vlan_va
 	// rtl837x_apply_config(dev);
     return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_set_vlan_ports);
 
-int rtl837x_sw_get_port_pvid_u(struct switch_dev *dev, int port, int *val)
+static int rtl837x_sw_get_port_pvid_u(struct switch_dev *dev, int port, int *val)
 {
 	int result; // x0
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
@@ -263,9 +257,8 @@ int rtl837x_sw_get_port_pvid_u(struct switch_dev *dev, int port, int *val)
 	}
 	return result;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_get_port_pvid_u);
 
-int rtl837x_sw_set_port_pvid_u(struct switch_dev *dev, int port, int val)
+static int rtl837x_sw_set_port_pvid_u(struct switch_dev *dev, int port, int val)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
@@ -275,7 +268,6 @@ int rtl837x_sw_set_port_pvid_u(struct switch_dev *dev, int port, int val)
 
     return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_set_port_pvid_u);
 
 /**
  * @brief 转换速度代码为具体速率值
@@ -297,7 +289,7 @@ static uint32_t convert_speed_code(uint32_t speed_code)
     }
 }
 
-int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, struct switch_port_link *link)
+static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, struct switch_port_link *link)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
     ret_t ret;
@@ -352,61 +344,53 @@ int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, struct swi
     *link = result;
     return RT_ERR_OK;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_get_port_link_status);
 
-int rtl837x_sw_set_port_link_u(struct switch_dev *dev, int port, struct switch_port_link *link)
+static int rtl837x_sw_set_port_link_u(struct switch_dev *dev, int port, struct switch_port_link *link)
 {
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_set_port_link_u);
 
-int rtl837x_sw_reset_switch(struct switch_dev *dev)
+static int rtl837x_sw_reset_switch(struct switch_dev *dev)
 {
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_reset_switch);
 
-int rtl837x_sw_set_vlan_enable(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+static int rtl837x_sw_set_vlan_enable(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 	gsw->global_vlan_enable = val->value.i;
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_set_vlan_enable);
 
-int rtl837x_sw_get_flowcontrol_ports(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+static int rtl837x_sw_get_flowcontrol_ports(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
     val->value.i = gsw->flow_control_map;
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_get_flowcontrol_ports);
 
-int rtl837x_sw_set_flowcontrol_ports(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+static int rtl837x_sw_set_flowcontrol_ports(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 	gsw->flow_control_map = val->value.i;
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_set_flowcontrol_ports);
 
-int rtl837x_sw_get_vlan_enable(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+static int rtl837x_sw_get_vlan_enable(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
     val->value.i = gsw->global_vlan_enable;
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_get_vlan_enable);
 
-int rtl837x_sw_reset_mibs(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+static int rtl837x_sw_reset_mibs(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
     // struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
     rtk_stat_global_reset();
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_reset_mibs);
 
-int rtl837x_sw_reset_port_mibs(struct switch_dev *dev,const struct switch_attr *attr,struct switch_val *val)
+static int rtl837x_sw_reset_port_mibs(struct switch_dev *dev,const struct switch_attr *attr,struct switch_val *val)
 {
 	rtk_uint32 port;
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
@@ -416,9 +400,8 @@ int rtl837x_sw_reset_port_mibs(struct switch_dev *dev,const struct switch_attr *
 
 	return rtk_stat_port_reset(gsw->port_map[port]);
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_reset_port_mibs);
 
-int rtl837x_sw_get_port_mib(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+static int rtl837x_sw_get_port_mib(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {	
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
@@ -444,7 +427,6 @@ int rtl837x_sw_get_port_mib(struct switch_dev *dev, const struct switch_attr *at
 	val->len = len;
 	return 0;
 }
-EXPORT_SYMBOL_GPL(rtl837x_sw_get_port_mib);
 
 static struct switch_attr rtl832n_globals[] = {
 	{
@@ -465,13 +447,7 @@ static struct switch_attr rtl832n_globals[] = {
 		.description = "set hw flow control of port mask (1f: all ports)",
 		.set = rtl837x_sw_set_flowcontrol_ports,
 		.get = rtl837x_sw_get_flowcontrol_ports,
-    }//, {
-	// 	.type = SWITCH_TYPE_INT,
-	// 	.name = "enable_igmp_snooping",
-	// 	.description = "igmp snooping (1:enabled)",
-	// 	.set = sub_16A0, Null
-	// 	.get = sub_1EE8, Null
-    // }
+    }
 };
 
 static struct switch_attr rtl837x_port[] = {
@@ -491,7 +467,7 @@ static struct switch_attr rtl837x_port[] = {
 
 static const struct switch_dev_ops rtl8372n_sw_ops = {
     .attr_global = { .attr = rtl832n_globals, .n_attr = ARRAY_SIZE(rtl832n_globals)},
-    // .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
+    .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
     .attr_vlan = { .attr = NULL, .n_attr = 0 },
 
 	.get_vlan_ports = rtl837x_sw_get_vlan_ports_u,

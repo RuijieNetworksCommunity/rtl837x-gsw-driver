@@ -71,5 +71,10 @@ extern int rtl837x_debug_proc_deinit(void);
 
 extern int rtl837x_swconfig_init(struct rtk_gsw *gsw);
 
+unsigned int mii_mgr_read(unsigned int phy_addr, 
+		unsigned int phy_register, unsigned int *read_data);
+
+unsigned int mii_mgr_write(unsigned int phy_addr, 
+		unsigned int phy_register, unsigned int write_data);
 
 #endif

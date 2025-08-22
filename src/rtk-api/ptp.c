@@ -646,7 +646,7 @@ rtk_api_ret_t rtk_time_portPtpRefTimeFreqCfg_get(rtk_uint32 *pFreqCfg, rtk_uint3
  * Changes:
  *          New added function.
  */
-rtk_api_ret_t rtk_time_portPtpRefTimeFreqCfg_set( rtk_uint32 freq, rtk_enable_t apply)
+rtk_api_ret_t rtk_time_portPtpRefTimeFreqCfg_set(rtk_uint32 freq, rtk_enable_t apply)
 {
     rtk_api_ret_t retVal;
 

@@ -677,7 +677,7 @@ extern rtk_api_ret_t rtk_time_portPtpRefTimeFreqCfg_get( rtk_uint32 *pFreqCfg, r
  *      [SDK_NEXT_RELEASE_VERSION]
  *          New added function.
  */
-extern rtk_api_ret_t rtk_time_portPtpRefTimeFreqCfg_set(rtk_uint32 freq, rtk_uint32 apply);
+extern rtk_api_ret_t rtk_time_portPtpRefTimeFreqCfg_set(rtk_uint32 freq, rtk_enable_t apply);
 
 /* Function Name:
  *      rtk_time_portPtpTxInterruptStatus_get
