@@ -1,6 +1,7 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/version.h>
 #include <linux/device.h>
 #include <linux/delay.h>
 #include <linux/of_mdio.h>
@@ -397,7 +398,7 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	return 0;
 }
 
-#if 1
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,10,0)
 static int rtl837x_gsw_remove(struct platform_device *pdev)
 {
 	struct rtk_gsw *gsw = platform_get_drvdata(pdev);
