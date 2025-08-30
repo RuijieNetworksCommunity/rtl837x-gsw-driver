@@ -41,6 +41,26 @@
 #define  SDS_FIBER_FC_EN (1)
 #define  SDS_NWAY_EN  (1)
 
+
+#ifdef CONFIG_SDS_0_PN_SWAP_RX_8B10B
+#pragma message("defined CONFIG_SDS_0_PN_SWAP_RX_8B10B")
+#endif
+#ifdef CONFIG_SDS_1_PN_SWAP_RX_8B10B
+#pragma message("defined CONFIG_SDS_1_PN_SWAP_RX_8B10B")
+#endif
+#ifdef CONFIG_SDS_0_PN_SWAP_RX_64B66B
+#pragma message("defined CONFIG_SDS_0_PN_SWAP_RX_64B66B")
+#endif
+#ifdef CONFIG_SDS_1_PN_SWAP_RX_64B66B
+#pragma message("defined CONFIG_SDS_1_PN_SWAP_RX_64B66B")
+#endif
+#ifdef CONFIG_PHY_MDI_SWAP_RX_TX
+#pragma message("defined CONFIG_PHY_MDI_SWAP_RX_TX")
+#endif
+#ifdef CONFIG_PHY_TX_POLARITY_SWAP
+#pragma message("defined CONFIG_PHY_MDI_SWAP_RX_TX")
+#endif
+
 static rtk_uint32 spd_8221_last = 0xff;
  
  /*
@@ -2880,10 +2900,9 @@ rtk_api_ret_t dal_rtl8373_fw_reset_flow_8221B(rtk_uint32 sdsid)
    
     rtl8373_setAsicRegBits(RTL8373_SDS_MODE_SEL_ADDR, RTL8373_SDS_MODE_SEL_SDS0_USX_SUB_MODE_MASK, 2);//SDS0_USX_SUB_MODE = 0x2, default is 0x2 10G-QXGMII
     rtl8373_setAsicRegBits(RTL8373_SDS_MODE_SEL_ADDR, RTL8373_SDS_MODE_SEL_SDS0_MODE_SEL_MASK, 0xD);//SDS0_MODE_SEL = 0xD
-    dal_rtl8373_sds_regbits_write(0, 6, 1, 0x4, 1);
+    dal_rtl8373_sds_regbits_write(0, 6, 1, 0x4, 1);//#serdes0 AFE loopback
     delay_loop(20);
-    dal_rtl8373_sds_regbits_write(0, 6, 1, 0x4, 0);
-
+    dal_rtl8373_sds_regbits_write(0, 6, 1, 0x4, 0);//#关闭loopback	  
 
      rtl8373_setAsicRegBits(RTL8373_SDS_MODE_SEL_ADDR, RTL8373_SDS_MODE_SEL_SDS0_MODE_SEL_MASK, 0x1F);//SDS0_MODE_SEL = 0x1F
      delay_loop(100);
@@ -2902,9 +2921,10 @@ rtk_api_ret_t dal_rtl8373_fw_reset_flow_8221B(rtk_uint32 sdsid)
 
     fw_reset_flow_tgr(0);
 
-
+#ifdef CONFIG_PHY_MDI_SWAP_RX_TX
     rtl8373_setAsicRegBits(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xf, 0xc);
     dal_rtl8224_top_regbits_write(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xf, 0xc);
+#endif
     dal_rtl8373_phy_write(0xff, 31, 0xa610, 0x2858);
     
     
@@ -2995,7 +3015,9 @@ rtk_api_ret_t dal_rtl8373_fw_reset_flow_8221B(rtk_uint32 sdsid)
 
   
     //#MDI reverse configuration for Demo Tap UP RJ45, RTL8372
-    rtl8373_setAsicRegBits(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xf, 0xc);
+#ifdef CONFIG_PHY_MDI_SWAP_RX_TX
+    rtl8373_setAsicRegBits(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xF, 0xC);
+#endif
 
   //  puts "Power down PHY 4~7"
     dal_rtl8373_phy_write(0xf0, 31, 0xa610, 0x2858);
@@ -3077,12 +3099,18 @@ rtk_api_ret_t dal_rtl8373_fw_reset_flow_8221B(rtk_uint32 sdsid)
 
     //## ---------------------------Init SDS--------------------------
 
-    dal_rtl8373_sds_regbits_write(0, 0, 0, 0x200, 1); //#SDS0RX PN swap
-    dal_rtl8373_sds_regbits_write(1, 0, 0, 0x200, 1); //#SDS1RX PN swap 
-
-    dal_rtl8373_sds_regbits_write(0, 6, 2, 0x2000, 1);
-    dal_rtl8373_sds_regbits_write(1, 6, 2, 0x2000, 1);
-
+#ifdef CONFIG_SDS_0_PN_SWAP_RX_8B10B
+    dal_rtl8373_sds_regbits_write(0, 0, 0, 0x200, 1); //#SDS0RX PN swap for 8B/10B
+#endif
+#ifdef CONFIG_SDS_1_PN_SWAP_RX_8B10B
+    dal_rtl8373_sds_regbits_write(1, 0, 0, 0x200, 1); //#SDS1RX PN swap for 8B/10B
+#endif
+#ifdef CONFIG_SDS_0_PN_SWAP_RX_64B66B
+    dal_rtl8373_sds_regbits_write(0, 6, 2, 0x2000, 1); //#SDS0RX PN swap for 64B/66B
+#endif
+#ifdef CONFIG_SDS_1_PN_SWAP_RX_64B66B
+    dal_rtl8373_sds_regbits_write(1, 6, 2, 0x2000, 1); //#SDS1RX PN swap for 64B/66B
+#endif
 
     //   ## tgr reset flow
     delay_loop(5);
@@ -3093,8 +3121,12 @@ rtk_api_ret_t dal_rtl8373_fw_reset_flow_8221B(rtk_uint32 sdsid)
     //## ---------------------------Patch PHY--------------------------
 
     //##MDI reverse configuration for Demo Tap UP RJ45, RTL8366U/RTL8373N/RTL8372N
+#ifdef CONFIG_PHY_MDI_SWAP_RX_TX
     rtl8373_setAsicRegBits(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xF, 0xC);
+#endif
+#ifdef CONFIG_PHY_TX_POLARITY_SWAP
     rtl8373_setAsicRegBits(RTL8373_CFG_PHY_TX_POLARITY_SWAP_ADDR, 0xFFFF, 0x596A); //#TX_POLARITY_SWAP
+#endif
 
       //  puts "Power down PHY 4~7"
     dal_rtl8373_phy_write(0xF0, 31, 0xa610, 0x2858);
@@ -3171,11 +3203,18 @@ rtk_api_ret_t rtl8372n_init(void)
 
     //## ---------------------------Init SDS--------------------------
 
-    // dal_rtl8373_sds_regbits_write(0, 0, 0, 0x200, 1); //#SDS0RX PN swap
-    // dal_rtl8373_sds_regbits_write(1, 0, 0, 0x200, 1); //#SDS1RX PN swap 
-
-    // dal_rtl8373_sds_regbits_write(0, 6, 2, 0x2000, 1);
-    // dal_rtl8373_sds_regbits_write(1, 6, 2, 0x2000, 1);
+#ifdef CONFIG_SDS_0_PN_SWAP_RX_8B10B
+    dal_rtl8373_sds_regbits_write(0, 0, 0, 0x200, 1); //#SDS0RX PN swap for 8B/10B
+#endif
+#ifdef CONFIG_SDS_1_PN_SWAP_RX_8B10B
+    dal_rtl8373_sds_regbits_write(1, 0, 0, 0x200, 1); //#SDS1RX PN swap for 8B/10B
+#endif
+#ifdef CONFIG_SDS_0_PN_SWAP_RX_64B66B
+    dal_rtl8373_sds_regbits_write(0, 6, 2, 0x2000, 1); //#SDS0RX PN swap for 64B/66B
+#endif
+#ifdef CONFIG_SDS_1_PN_SWAP_RX_64B66B
+    dal_rtl8373_sds_regbits_write(1, 6, 2, 0x2000, 1); //#SDS1RX PN swap for 64B/66B
+#endif
 
 
     //   ## tgr reset flow
@@ -3187,8 +3226,12 @@ rtk_api_ret_t rtl8372n_init(void)
     //## ---------------------------Patch PHY--------------------------
 
     //##MDI reverse configuration for Demo Tap UP RJ45, RTL8366U/RTL8373N/RTL8372N
-    // rtl8373_setAsicRegBits(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xF, 0xC);
-    // rtl8373_setAsicRegBits(RTL8373_CFG_PHY_TX_POLARITY_SWAP_ADDR, 0xFFFF, 0x596A); //#TX_POLARITY_SWAP
+#ifdef CONFIG_PHY_MDI_SWAP_RX_TX
+    rtl8373_setAsicRegBits(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xF, 0xC);
+#endif
+#ifdef CONFIG_PHY_TX_POLARITY_SWAP
+    rtl8373_setAsicRegBits(RTL8373_CFG_PHY_TX_POLARITY_SWAP_ADDR, 0xFFFF, 0x596A); //#TX_POLARITY_SWAP
+#endif
 
       //  puts "Power down PHY 4~7"
     dal_rtl8373_phy_write(0xF0, 31, 0xa610, 0x2858);
@@ -3317,11 +3360,14 @@ rtk_api_ret_t rtl8373N_8224N_init(void)
 	//## ---------------------------Patch PHY--------------------------
   
 	  //##MDI reverse configuration for Demo Tap UP RJ45, RTL8366U/RTL8373N/RTL8372N
+#ifdef CONFIG_PHY_MDI_SWAP_RX_TX
 	rtl8373_setAsicRegBits(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xf, 0xc);
-	rtl8373_setAsicRegBits(RTL8373_CFG_PHY_TX_POLARITY_SWAP_ADDR, 0xffff, 0x596A); //#TX_POLARITY_SWAP
-  
 	dal_rtl8224_top_regbits_write(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xf, 0xc);
+#endif
+#ifdef CONFIG_PHY_TX_POLARITY_SWAP
+	rtl8373_setAsicRegBits(RTL8373_CFG_PHY_TX_POLARITY_SWAP_ADDR, 0xffff, 0x596A); //#TX_POLARITY_SWAP
 	dal_rtl8224_top_regbits_write(RTL8373_CFG_PHY_TX_POLARITY_SWAP_ADDR, 0xffff, 0x596A);
+#endif
   
 	//	puts "Power down PHY 0~7"
 	dal_rtl8373_phy_write(phymask, 31, 0xa610, 0x2858);
