@@ -214,6 +214,35 @@ static int rtl837x_sdsmode(const char *name, rtk_sds_mode_t *mode)
 	return -1;
 }
 
+static int rtl8372n_igmp_init(struct rtk_gsw *gsw)
+{
+
+	unsigned int ret;
+	ret = rtk_igmp_init();
+	if (ret) return ret;
+
+	ret = rtk_igmp_state_set(TRUE);
+	if (ret) return ret;
+
+	ret = rtk_igmp_fastLeave_set(TRUE);
+	if (ret) return ret;
+
+	if(gsw->num_ports > 0)
+	{
+		for(int port = 0;port < gsw->num_ports;port++){
+			rtk_uint32 phy_port = gsw->port_map[port];
+			ret = rtk_igmp_maxGroup_set(phy_port, 255LL);
+			if (ret)
+			{
+				dev_err(gsw->dev, "rtk_igmp_maxGroup_set failed, errno %d\n",ret);
+				return ret;
+			}
+		}
+		
+	}
+	return rtk_igmp_suppressionEnable_set(TRUE, TRUE);
+}
+
 static int rtl8372n_hw_init(struct rtk_gsw *gsw)
 {
 
@@ -237,6 +266,13 @@ static int rtl8372n_hw_init(struct rtk_gsw *gsw)
     if (ret)
     {
 		dev_err(gsw->dev, "rtk_vlan_init failed, errno:%d\n", ret);
+		return -1;
+    }
+
+	ret = rtl8372n_igmp_init(gsw);
+    if (ret)
+    {
+		dev_err(gsw->dev, "rtl8372n_igmp_init failed, errno:%d\n", ret);
 		return -1;
     }
 

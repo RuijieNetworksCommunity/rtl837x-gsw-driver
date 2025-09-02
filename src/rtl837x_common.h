@@ -16,6 +16,7 @@
 #include "./rtk-api/cpuTag.h"
 #include "./rtk-api/mib.h"
 #include "./rtk-api/isolation.h"
+#include "./rtk-api/igmp.h"
 
 struct rtl837x_mib_counter {
 	uint16_t	base;
