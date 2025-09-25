@@ -23,7 +23,7 @@
 #define SWITCH_PORT_SPEED_5000 5000
 #endif
 
-static int rtl837x_sw_get_port_stats_u(struct switch_dev *dev, int port,struct switch_port_stats *stats)
+static int rtl837x_sw_get_port_stats(struct switch_dev *dev, int port,struct switch_port_stats *stats)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
@@ -158,12 +158,12 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
     return 0;
 }
 
-static int rtl837x_sw_get_vlan_ports_u(struct switch_dev *dev, struct switch_val *val)
+static int rtl837x_sw_get_vlan_ports(struct switch_dev *dev, struct switch_val *val)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
 	val->len = 0;
-    // if(!(gsw->vlan_table[val->port_vlan].valid)) return 0;
+    if(!(gsw->vlan_table[val->port_vlan].valid)) return 0;
 	rtk_vlan_entry_t vlan_cfg;
 	if (rtk_vlan_get(val->port_vlan, &vlan_cfg)) return -22;
     if (!vlan_cfg.ivl_svl) return 0; //跳过下面的多余循环
@@ -242,7 +242,7 @@ static int rtl837x_sw_set_vlan_ports(struct switch_dev *dev, struct switch_val *
     return 0;
 }
 
-static int rtl837x_sw_get_port_pvid_u(struct switch_dev *dev, int port, int *val)
+static int rtl837x_sw_get_port_pvid(struct switch_dev *dev, int port, int *val)
 {
 	int result; // x0
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
@@ -258,7 +258,7 @@ static int rtl837x_sw_get_port_pvid_u(struct switch_dev *dev, int port, int *val
 	return result;
 }
 
-static int rtl837x_sw_set_port_pvid_u(struct switch_dev *dev, int port, int val)
+static int rtl837x_sw_set_port_pvid(struct switch_dev *dev, int port, int val)
 {
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
@@ -345,7 +345,7 @@ static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, str
     return RT_ERR_OK;
 }
 
-static int rtl837x_sw_set_port_link_u(struct switch_dev *dev, int port, struct switch_port_link *link)
+static int rtl837x_sw_set_port_link(struct switch_dev *dev, int port, struct switch_port_link *link)
 {
 	return 0;
 }
@@ -470,19 +470,19 @@ static const struct switch_dev_ops rtl8372n_sw_ops = {
     .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
     .attr_vlan = { .attr = NULL, .n_attr = 0 },
 
-	.get_vlan_ports = rtl837x_sw_get_vlan_ports_u,
+	.get_vlan_ports = rtl837x_sw_get_vlan_ports,
 	.set_vlan_ports = rtl837x_sw_set_vlan_ports,
 
-	.get_port_pvid = rtl837x_sw_get_port_pvid_u,
-	.set_port_pvid = rtl837x_sw_set_port_pvid_u,
+	.get_port_pvid = rtl837x_sw_get_port_pvid,
+	.set_port_pvid = rtl837x_sw_set_port_pvid,
 	
 	.apply_config = rtl837x_sw_apply_config,
 	.reset_switch = rtl837x_sw_reset_switch,
 
 	.get_port_link = rtl837x_sw_get_port_link_status,
-	.set_port_link = rtl837x_sw_set_port_link_u,
+	.set_port_link = rtl837x_sw_set_port_link,
 
-	.get_port_stats = rtl837x_sw_get_port_stats_u,
+	.get_port_stats = rtl837x_sw_get_port_stats,
 };
 
 int rtl837x_swconfig_init(struct rtk_gsw *gsw)

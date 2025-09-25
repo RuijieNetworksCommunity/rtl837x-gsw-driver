@@ -22,7 +22,7 @@ static int sds_reg_read(struct seq_file *seq, void *v)
 {
     unsigned int v3;
 
-    rtk_rtl8373_getAsicReg(0x7B20u, &v3);
+    rtk_rtl8373_getAsicReg(RTL8373_SDS_MODE_SEL_ADDR, &v3);
     seq_printf(seq, "reg 0x7b20: %#x\n", v3);
     rtk_rtl8373_sds_reg_read(0, 0x21u, 0x10u, &v3);
     seq_printf(seq, "sds page 0x21  reg 0x10; data = %#x\n", v3);
