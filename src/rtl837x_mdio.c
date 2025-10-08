@@ -170,7 +170,7 @@ static int rtl837x_hw_reset(struct rtk_gsw *gsw)
 {
 	if (gsw->reset_pin < 0)
 		return 0;
-	printk("START HW RESET");
+	dev_info(gsw->dev, "START HW RESET");
 	gpio_direction_output(gsw->reset_pin, 0);
 
 	gpio_set_value(gsw->reset_pin, 1);
@@ -182,7 +182,7 @@ static int rtl837x_hw_reset(struct rtk_gsw *gsw)
 	gpio_set_value(gsw->reset_pin, 1);
 	mdelay(50);
 
-	printk("FINISH HW RESET");
+	dev_info(gsw->dev, "FINISH HW RESET");
 	return 0;
 }
 
@@ -417,7 +417,7 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	gsw->mib_counters = rtl837x_mib_counters;
 	gsw->num_mib_counters = ARRAY_SIZE(rtl837x_mib_counters);
 
-	printk("rtl837x dev info:smi-addr:%d\tcpu_port:%d\tserdes-mode:%d\n", gsw->smi_addr, gsw->cpu_port, gsw->sds0mode);
+	dev_info(gsw->dev, "rtl837x dev info:smi-addr:%d\tcpu_port:%d\tserdes-mode:%d\n", gsw->smi_addr, gsw->cpu_port, gsw->sds0mode);
 
 	platform_set_drvdata(pdev, gsw);
 	mutex_init(&rtl_mii_lock);
