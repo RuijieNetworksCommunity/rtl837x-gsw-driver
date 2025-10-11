@@ -3170,11 +3170,17 @@ rtk_api_ret_t rtl8372n_init(void)
 
 
     //## ---------------------------Init SDS--------------------------
+// Sx PN swap:
+// 	RX:
+// 		page0 reg0 bit9:1
+// 		page6 reg2 bit13:1
+// 	TX:
+// 		page0 reg0 bit8:1
+// 		page6 reg2 bit14:1
 
     // dal_rtl8373_sds_regbits_write(0, 0, 0, 0x200, 1); //#SDS0RX PN swap
-    // dal_rtl8373_sds_regbits_write(1, 0, 0, 0x200, 1); //#SDS1RX PN swap 
-
     // dal_rtl8373_sds_regbits_write(0, 6, 2, 0x2000, 1);
+    // dal_rtl8373_sds_regbits_write(1, 0, 0, 0x200, 1); //#SDS1RX PN swap 
     // dal_rtl8373_sds_regbits_write(1, 6, 2, 0x2000, 1);
 
 
