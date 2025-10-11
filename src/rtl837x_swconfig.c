@@ -56,7 +56,7 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
                 .Full_10 = 1,
                 .Half_100 = 1,
                 .Full_100 = 1,
-                .Half_1000 = 0,
+                .Half_1000 = 1,
                 .Full_1000 = 1,
                 .adv_2_5G = 1,
                 .adv_5G = 0,
@@ -70,10 +70,10 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
                 ana.AsyFC = 1;
             }
             // 设置端口自动协商能力
-            ret = rtk_phy_autoNegoAbility_set(gsw->port_map[port], &ana);
+            ret = rtk_phy_common_c45_autoSpeed_set(gsw->port_map[port], &ana);
             if (ret) {
                 dev_err(gsw->dev, "Port %d autoNegoAbility configure Failed: %d", port, ret);
-                return ret;
+                return -EIO;
             }
         }
     }
@@ -100,7 +100,7 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
                 ret = rtk_vlan_set(vlan_id, &vlan_cfg);
                 if (ret) {
                     dev_err(gsw->dev, "VLAN %d configure Failed: %d", vlan_id, ret);
-                    return ret;
+                    return -EIO;
                 }
             }
         }
@@ -115,7 +115,7 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
             
             if (ret) {
                 dev_err(gsw->dev, "port %d PVID configure Failed: %d", port, ret);
-                return ret;
+                return -EIO;
             }
         }
     }
@@ -139,7 +139,7 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
                 ret = rtk_port_isolation_set(phy_port, (1 << cpu_phy_port));
                 if (ret) {
                     dev_err(gsw->dev, "Port %d isolation configure Failed: %d", port, ret);
-                    return ret;
+                    return -EIO;
                 }
             }
         }
@@ -148,7 +148,7 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
         ret = rtk_port_isolation_set(cpu_phy_port, isolation_map);
         if (ret) {
             dev_err(gsw->dev, "CPU port isolation configure Failed: %d", ret);
-            return ret;
+            return -EIO;
         }
     }
     return 0;
@@ -161,7 +161,7 @@ static int rtl837x_sw_get_vlan_ports(struct switch_dev *dev, struct switch_val *
 	val->len = 0;
     if(!(gsw->vlan_table[val->port_vlan].valid)) return 0;
 	rtk_vlan_entry_t vlan_cfg;
-	if (rtk_vlan_get(val->port_vlan, &vlan_cfg)) return -22;
+	if (rtk_vlan_get(val->port_vlan, &vlan_cfg)) return -EINVAL;
     if (!vlan_cfg.ivl_svl) return 0; //跳过下面的多余循环
 
 	struct switch_port *port = &val->value.ports[0];
@@ -190,7 +190,7 @@ static int rtl837x_sw_set_vlan_ports(struct switch_dev *dev, struct switch_val *
     rtk_uint32 vlan_id = vlan_val->port_vlan;
     
     // 验证 VLAN ID 范围 (1-4094)
-    if (vlan_id < 1 || vlan_id > 4094) return -22;
+    if (vlan_id < 1 || vlan_id > 4094) return -EINVAL;
     
     // 获取设备数据
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
@@ -241,15 +241,15 @@ static int rtl837x_sw_get_port_pvid(struct switch_dev *dev, int port, int *val)
 	int result; // x0
     struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
-	if (port > gsw->num_ports) return -22;
+	if (port > gsw->num_ports) return -EINVAL;
 
 	result = rtk_vlan_portPvid_get(gsw->port_map[port], val);
 	if ( result )
 	{
 		dev_err(gsw->dev, "%s: rtk_vlan_portPvid_get failed, ret=%d\n", "rtl837x_get_port_pvid", result);
-		return -22;
+		return -EINVAL;
 	}
-	return result;
+	return 0;
 }
 
 static int rtl837x_sw_set_port_pvid(struct switch_dev *dev, int port, int val)
@@ -290,7 +290,7 @@ static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, str
     // 检查端口有效性
     if (port >= gsw->num_ports) {
         dev_err(gsw->dev, "Invalid Port: %u", port);
-        return -22;
+        return -EINVAL;
     }
     
     // 获取物理端口号
@@ -320,7 +320,7 @@ static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, str
             dev_err(gsw->dev, 
                     "get port:%u autoNegoAbility status Failed: %d", 
                     port, auto_neg_value);
-            return ret;
+            return -EIO;
         }
         auto_neg_enabled = (auto_neg_value != 0);
     }
@@ -336,7 +336,7 @@ static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, str
     };
 
     *link = result;
-    return RT_ERR_OK;
+    return 0;
 }
 
 static int rtl837x_sw_set_port_link(struct switch_dev *dev, int port, struct switch_port_link *link)
@@ -392,7 +392,9 @@ static int rtl837x_sw_reset_port_mibs(struct switch_dev *dev,const struct switch
 	port = val->port_vlan;
 	if (port >= 9) return -EINVAL;
 
-	return rtk_stat_port_reset(gsw->port_map[port]);
+    rtk_stat_port_reset(gsw->port_map[port]);
+
+	return 0;
 }
 
 static int rtl837x_sw_get_port_mib(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
@@ -461,7 +463,7 @@ static struct switch_attr rtl837x_port[] = {
 
 static const struct switch_dev_ops rtl8372n_sw_ops = {
     .attr_global = { .attr = rtl832n_globals, .n_attr = ARRAY_SIZE(rtl832n_globals)},
-    .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
+    // .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
     .attr_vlan = { .attr = NULL, .n_attr = 0 },
 
 	.get_vlan_ports = rtl837x_sw_get_vlan_ports,

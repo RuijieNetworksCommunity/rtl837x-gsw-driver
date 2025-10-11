@@ -252,28 +252,28 @@ static int rtl8372n_hw_init(struct rtk_gsw *gsw)
 	ret = rtk_switch_init();
 	if(ret){
 		dev_err(gsw->dev, "rtk_switch_init Fail, erron:%d\n", ret);
-		return -1;
+		return -EPERM;
 	}
 
 	ret = rtk_vlan_reset();
     if (ret)
     {
 		dev_err(gsw->dev, "rtk_vlan_reset failed, errno:%d\n", ret);
-		return -1;
+		return -EPERM;
     }
 
 	ret = rtk_vlan_init();
     if (ret)
     {
 		dev_err(gsw->dev, "rtk_vlan_init failed, errno:%d\n", ret);
-		return -1;
+		return -EPERM;
     }
 
 	ret = rtl8372n_igmp_init(gsw);
     if (ret)
     {
 		dev_err(gsw->dev, "rtl8372n_igmp_init failed, errno:%d\n", ret);
-		return -1;
+		return -EPERM;
     }
 
 	return 0;
@@ -287,23 +287,23 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 	if (ret)
 	{
 		dev_err(gsw->dev, "rtl8372n_hw_init failed, errno %d\n",ret);
-		return -19;
+		return -ENODEV;
 	}
 
 	rtk_rmaParam_t pRmacfg;
-	ret = rtk_rma_get(2u, &pRmacfg);
+	ret = rtk_rma_get(2, &pRmacfg);
 	if ( ret )
 	{
 		dev_err(gsw->dev, "rtk_rma_get get rma failed, errno %d\n", ret);
-	return -1;
+	return -EPERM;
 	}
 
 	pRmacfg.operation = RMAOP_FORWARD;                   // 清零配置
-	ret = rtk_rma_set(2u, &pRmacfg);
+	ret = rtk_rma_set(2, &pRmacfg);
 	if ( ret )
 	{
 		dev_err(gsw->dev, "rtk_rma_get set rma failed, errno %d\n", ret);
-		return -1;
+		return -EPERM;
 	}
 
 	for(int port = 0;port < gsw->num_ports;port++){
@@ -312,23 +312,23 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 		if (ret)
 		{
 			dev_err(gsw->dev, "rtk_eee_portTxRxEn_set failed, errno %d\n",ret);
-			return -1;
+			return -EPERM;
 		}
 	}
 
 	ret = rtk_sdsMode_set(0, gsw->sds0mode);
 	if (ret)
-		return ret;
+		return -EPERM;
 
 	ret = rtk_sdsMode_set(1, gsw->sds1mode);
 	if (ret)
-		return ret;
+		return -EPERM;
 
 	ret = rtk_cpu_externalCpuPort_set(gsw->port_map[gsw->cpu_port]);
 	if (ret)
 	{
 		dev_err(gsw->dev, "rtk_cpu_externalCpuPort_set failed, errno %d\n",ret);
-		return -1;
+		return -EPERM;
 	}
 
 	// TODO
