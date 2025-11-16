@@ -17,6 +17,7 @@
 #include "./rtk-api/mib.h"
 #include "./rtk-api/isolation.h"
 #include "./rtk-api/igmp.h"
+#include "./rtk-api/dal/rtl8373/rtl8373_asicdrv.h"
 
 struct rtl837x_mib_counter {
 	uint16_t	base;

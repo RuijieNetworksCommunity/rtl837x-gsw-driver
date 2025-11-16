@@ -156,7 +156,7 @@ static int rtl837x_switch_probe(struct rtk_gsw *gsw)
 CHIP_NOT_SUPPORTED:
 	//未知芯片ID
     rtk_uint32 regValue;
-    rtk_rtl8373_getAsicReg(4, &regValue);
+    rtl8373_getAsicReg(0x4, &regValue);
 	dev_err(gsw->dev, "Error: Can not support this device, devid 0x%x\n", regValue);
 	return RT_ERR_CHIP_NOT_SUPPORTED;
 
@@ -231,10 +231,10 @@ static int rtl8372n_igmp_init(struct rtk_gsw *gsw)
 	{
 		for(int port = 0;port < gsw->num_ports;port++){
 			rtk_uint32 phy_port = gsw->port_map[port];
-			ret = rtk_igmp_maxGroup_set(phy_port, 255LL);
+			ret = rtk_igmp_maxGroup_set(phy_port, 255);
 			if (ret)
 			{
-				dev_err(gsw->dev, "rtk_igmp_maxGroup_set failed, errno %d\n",ret);
+				dev_err(gsw->dev, "rtk_igmp_maxGroup_set failed, error:%d\n",ret);
 				return ret;
 			}
 		}
@@ -248,31 +248,36 @@ static int rtl8372n_hw_init(struct rtk_gsw *gsw)
 
 	unsigned int ret;
 	rtl837x_hw_reset(gsw);
-	rtl837x_switch_probe(gsw);
+	ret = rtl837x_switch_probe(gsw);
+	if(ret){
+		dev_err(gsw->dev, "rtl837x_switch_probe Fail, error:%d\n", ret);
+		return -EPERM;
+	}
+
 	ret = rtk_switch_init();
 	if(ret){
-		dev_err(gsw->dev, "rtk_switch_init Fail, erron:%d\n", ret);
+		dev_err(gsw->dev, "rtk_switch_init Fail, error:%d\n", ret);
 		return -EPERM;
 	}
 
 	ret = rtk_vlan_reset();
     if (ret)
     {
-		dev_err(gsw->dev, "rtk_vlan_reset failed, errno:%d\n", ret);
+		dev_err(gsw->dev, "rtk_vlan_reset failed, error:%d\n", ret);
 		return -EPERM;
     }
 
 	ret = rtk_vlan_init();
     if (ret)
     {
-		dev_err(gsw->dev, "rtk_vlan_init failed, errno:%d\n", ret);
+		dev_err(gsw->dev, "rtk_vlan_init failed, error:%d\n", ret);
 		return -EPERM;
     }
 
 	ret = rtl8372n_igmp_init(gsw);
     if (ret)
     {
-		dev_err(gsw->dev, "rtl8372n_igmp_init failed, errno:%d\n", ret);
+		dev_err(gsw->dev, "rtl8372n_igmp_init failed, error:%d\n", ret);
 		return -EPERM;
     }
 
@@ -283,18 +288,11 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 {
 	ret_t ret;
 
-	ret = rtl8372n_hw_init(gsw);
-	if (ret)
-	{
-		dev_err(gsw->dev, "rtl8372n_hw_init failed, errno %d\n",ret);
-		return -ENODEV;
-	}
-
 	rtk_rmaParam_t pRmacfg;
 	ret = rtk_rma_get(2, &pRmacfg);
 	if ( ret )
 	{
-		dev_err(gsw->dev, "rtk_rma_get get rma failed, errno %d\n", ret);
+		dev_err(gsw->dev, "rtk_rma_get get rma failed, error:%d\n", ret);
 	return -EPERM;
 	}
 
@@ -302,7 +300,7 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 	ret = rtk_rma_set(2, &pRmacfg);
 	if ( ret )
 	{
-		dev_err(gsw->dev, "rtk_rma_get set rma failed, errno %d\n", ret);
+		dev_err(gsw->dev, "rtk_rma_get set rma failed, error:%d\n", ret);
 		return -EPERM;
 	}
 
@@ -311,7 +309,7 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 		ret = rtk_eee_portTxRxEn_set(phy_port, 0u, 0u);
 		if (ret)
 		{
-			dev_err(gsw->dev, "rtk_eee_portTxRxEn_set failed, errno %d\n",ret);
+			dev_err(gsw->dev, "rtk_eee_portTxRxEn_set failed, error:%d\n",ret);
 			return -EPERM;
 		}
 	}
@@ -327,7 +325,7 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 	ret = rtk_cpu_externalCpuPort_set(gsw->port_map[gsw->cpu_port]);
 	if (ret)
 	{
-		dev_err(gsw->dev, "rtk_cpu_externalCpuPort_set failed, errno %d\n",ret);
+		dev_err(gsw->dev, "rtk_cpu_externalCpuPort_set failed, error:%d\n",ret);
 		return -EPERM;
 	}
 
@@ -422,11 +420,26 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, gsw);
 	mutex_init(&rtl_mii_lock);
 	_gsw = gsw;
-	init_rtl837x_gsw(gsw);
+
+	ret = rtl8372n_hw_init(gsw);
+	if (ret)
+	{
+		dev_err(gsw->dev, "rtl8372n_hw_init failed, ret=%d\n",ret);
+		devm_kfree(&pdev->dev, gsw);
+		return -ENODEV;
+	}
+
+	ret = init_rtl837x_gsw(gsw);
+	if (ret){
+		dev_err(gsw->dev, "init_rtl837x_gsw failed, ret=%d\n", ret);
+		devm_kfree(&pdev->dev, gsw);
+		return ret;
+	}
 
 	ret = rtl837x_swconfig_init(gsw);
-	if (ret != 0){
+	if (ret){
 		dev_err(gsw->dev, "rtl837x_swconfig_init failed, ret=%d\n", ret);
+		devm_kfree(&pdev->dev, gsw);
 		return ret;
 	}
 
