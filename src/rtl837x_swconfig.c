@@ -424,6 +424,16 @@ static int rtl837x_sw_get_port_mib(struct switch_dev *dev, const struct switch_a
 	return 0;
 }
 
+static int rtl837x_sw_reset_sds0mode(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+{
+    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+    ret_t ret;
+    ret = rtk_sdsMode_set(0, gsw->sds0mode);
+	if (ret)
+		return -EPERM;
+	return 0;
+}
+
 static struct switch_attr rtl832n_globals[] = {
 	{
 		.type = SWITCH_TYPE_INT,
@@ -443,6 +453,11 @@ static struct switch_attr rtl832n_globals[] = {
 		.description = "set hw flow control of port mask (1f: all ports)",
 		.set = rtl837x_sw_set_flowcontrol_ports,
 		.get = rtl837x_sw_get_flowcontrol_ports,
+    }, {
+        .type = SWITCH_TYPE_NOVAL,
+        .name = "reset_serdes0",
+        .description = "Reset Serdes 0",
+        .set = rtl837x_sw_reset_sds0mode,
     }
 };
 
