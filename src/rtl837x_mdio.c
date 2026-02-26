@@ -452,25 +452,24 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	return 0;
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6,10,0)
-static int rtl837x_gsw_remove(struct platform_device *pdev)
+static void _rtl837x_gsw_remove(struct platform_device *pdev)
 {
 	struct rtk_gsw *gsw = platform_get_drvdata(pdev);
-
 	unregister_switch(&gsw->sw_dev);
 	rtl837x_debug_proc_deinit();
 	platform_set_drvdata(pdev, NULL);
+}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(6,10,0)
+static int rtl837x_gsw_remove(struct platform_device *pdev)
+{
+	_rtl837x_gsw_remove(pdev);
 	return 0;
 }
 #else
 static void rtl837x_gsw_remove(struct platform_device *pdev)
 {
-	struct rtk_gsw *gsw = platform_get_drvdata(pdev);
-
-	unregister_switch(&gsw->sw_dev);
-	rtl837x_debug_proc_deinit();
-	platform_set_drvdata(pdev, NULL);
+	_rtl837x_gsw_remove(pdev);
 }
 #endif
 
