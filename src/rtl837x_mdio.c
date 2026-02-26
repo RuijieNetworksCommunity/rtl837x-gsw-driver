@@ -131,31 +131,35 @@ static char* chipid_to_chip_name(switch_chip_t id)
 static int rtl837x_switch_probe(struct rtk_gsw *gsw)
 {
 	switch_chip_t sw_chip;
-	int i = 0;
-	while (i <= 3)
+
+	for(int i = 0;; i++)
 	{
-		i++;
+		if(i>3)
+			goto CHIP_NOT_SUPPORTED;
+
 		if (switch_probe(&sw_chip) != RT_ERR_OK) {
 			dev_warn(gsw->dev , "Error: Detect switch type failed\n");
-			continue; // 重试
-		}
-		switch (sw_chip)
-		{
-		case CHIP_RTL8372:
-		case CHIP_RTL8372N:
-			gsw->chip_name = chipid_to_chip_name(sw_chip);
-			gsw->num_ports = 6;
-			gsw->port_map = rtl8372_port_map;
-			goto END_DETECT_CHIP;
-		case CHIP_RTL8373:
-		case CHIP_RTL8373N:
-			gsw->chip_name = chipid_to_chip_name(sw_chip);
-			gsw->num_ports = 9;
-			gsw->port_map = rtl8373_port_map;
-			goto END_DETECT_CHIP;
-		default:
-			goto CHIP_NOT_SUPPORTED;
-		}
+			mdelay(50);
+		}else
+			break;
+	}
+
+	switch (sw_chip)
+	{
+	case CHIP_RTL8372:
+	case CHIP_RTL8372N:
+		gsw->chip_name = chipid_to_chip_name(sw_chip);
+		gsw->num_ports = 6;
+		gsw->port_map = rtl8372_port_map;
+		goto END_DETECT_CHIP;
+	case CHIP_RTL8373:
+	case CHIP_RTL8373N:
+		gsw->chip_name = chipid_to_chip_name(sw_chip);
+		gsw->num_ports = 9;
+		gsw->port_map = rtl8373_port_map;
+		goto END_DETECT_CHIP;
+	default:
+		goto CHIP_NOT_SUPPORTED;
 	}
 
 CHIP_NOT_SUPPORTED:
