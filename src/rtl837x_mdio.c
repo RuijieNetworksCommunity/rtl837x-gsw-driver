@@ -17,6 +17,7 @@
 #include <linux/switch.h>
 #include <linux/mutex.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 
 #include "./rtl837x_common.h"
 
@@ -74,36 +75,134 @@ static struct rtl837x_mib_counter rtl837x_mib_counters[] ={
 	{0x3A,"RxOverMaxBytes"}
 };
 
-static struct rtk_gsw *_gsw;
-struct mutex rtl_mii_lock;
-
-unsigned int mii_mgr_read(unsigned int phy_addr, 
-		unsigned int phy_register, unsigned int *read_data)
+static int rtl837x_mdio_write(void *ctx, u32 reg, u32 val)
 {
-	struct mii_bus *bus = _gsw->bus;
+	struct rtk_gsw *priv = ctx;
+	struct mii_bus *bus = priv->bus;
+	int ret;
 
-	mutex_lock_nested(&bus->mdio_lock, MDIO_MUTEX_NESTED);
+	mutex_lock(&bus->mdio_lock);
 
-	*read_data = bus->read(bus, _gsw->smi_addr, phy_register);
+	// check busy
+	ret = bus->read(bus, priv->mdio_addr, MDC_MDIO_CTRL_REG);
+    if (ret & 0x4) {
+		ret = RT_ERR_BUSYWAIT_TIMEOUT;
+		goto out_unlock;
+    }
 
+	ret = bus->write(bus, priv->mdio_addr, MDC_MDIO_ADDR_REG, reg);
+	if (ret)
+		goto out_unlock;
+
+	ret = bus->write(bus, priv->mdio_addr, MDC_MDIO_DATA_LOW, (val & 0xFFFF));
+	if (ret)
+		goto out_unlock;
+
+	ret = bus->write(bus, priv->mdio_addr, MDC_MDIO_DATA_HIGH, ((val >> 16) & 0xFFFF));
+	if (ret)
+		goto out_unlock;
+
+	ret = bus->write(bus, priv->mdio_addr, MDC_MDIO_CTRL_REG, MDC_MDIO_WRITE_CMD);
+	if (ret)
+		goto out_unlock;
+
+	// check busy
+	ret = bus->read(bus, priv->mdio_addr, MDC_MDIO_CTRL_REG);
+    if (ret & 0x4) {
+		ret = RT_ERR_BUSYWAIT_TIMEOUT;
+		goto out_unlock;
+    }
+	ret = 0;
+out_unlock:
 	mutex_unlock(&bus->mdio_lock);
-
-	return 0;
+	// printk("rtl837x_mdio_write ret:%d\n", ret);
+	return ret;
 }
 
-unsigned int mii_mgr_write(unsigned int phy_addr, 
-		unsigned int phy_register, unsigned int write_data)
+static int rtl837x_mdio_read(void *ctx, u32 reg, u32 *val)
 {
-	struct mii_bus *bus =  _gsw->bus;
+	struct rtk_gsw *priv = ctx;
+	struct mii_bus *bus = priv->bus;
+	int ret, val_l, val_h;
 
-	mutex_lock_nested(&bus->mdio_lock, MDIO_MUTEX_NESTED);
+	mutex_lock(&bus->mdio_lock);
 
-	bus->write(bus, _gsw->smi_addr, phy_register, write_data);
+	// check busy
+	ret = bus->read(bus, priv->mdio_addr, MDC_MDIO_CTRL_REG);
+    if (ret & 0x4) {
+		ret = RT_ERR_BUSYWAIT_TIMEOUT;
+		goto out_unlock;
+    }
 
+	ret = bus->write(bus, priv->mdio_addr, MDC_MDIO_ADDR_REG, reg);
+	if (ret)
+		goto out_unlock;
+
+	ret = bus->write(bus, priv->mdio_addr, MDC_MDIO_CTRL_REG, MDC_MDIO_READ_CMD);
+	if (ret)
+		goto out_unlock;
+
+	// check busy
+	ret = bus->read(bus, priv->mdio_addr, MDC_MDIO_CTRL_REG);
+    if (ret & 0x4) {
+		ret = RT_ERR_BUSYWAIT_TIMEOUT;
+		goto out_unlock;
+    }
+
+
+	val_l = bus->read(bus, priv->mdio_addr, MDC_MDIO_DATA_LOW);
+	val_h = bus->read(bus, priv->mdio_addr, MDC_MDIO_DATA_HIGH);
+
+    *val = val_l & 0xffff;
+    *val |= (val_h & 0xffff) << 16;
+	ret = 0;
+
+out_unlock:
 	mutex_unlock(&bus->mdio_lock);
-
-	return 0;
+	// printk("rtl837x_mdio_read ret:%d\n", ret);
+	return ret;
 }
+
+static void rtl837x_mdio_lock(void *ctx)
+{
+	struct rtk_gsw *priv = ctx;
+
+	mutex_lock(&priv->map_lock);
+}
+
+static void rtl837x_mdio_unlock(void *ctx)
+{
+	struct rtk_gsw *priv = ctx;
+
+	mutex_unlock(&priv->map_lock);
+}
+
+static const struct regmap_config rtl837x_mdio_regmap_config = {
+	.reg_bits = 16,
+	.val_bits = 32,
+	.reg_stride = 1,
+
+	.max_register = 0xffff,
+	.reg_format_endian = REGMAP_ENDIAN_BIG,
+	.reg_read = rtl837x_mdio_read,
+	.reg_write = rtl837x_mdio_write,
+	.cache_type = REGCACHE_NONE,
+	.lock = rtl837x_mdio_lock,
+	.unlock = rtl837x_mdio_unlock,
+};
+
+static const struct regmap_config rtl837x_mdio_nolock_regmap_config = {
+	.reg_bits = 16,
+	.val_bits = 32,
+	.reg_stride = 1,
+
+	.max_register = 0xffff,
+	.reg_format_endian = REGMAP_ENDIAN_BIG,
+	.reg_read = rtl837x_mdio_read,
+	.reg_write = rtl837x_mdio_write,
+	.cache_type = REGCACHE_NONE,
+	.disable_locking = true,
+};
 
 static char* chipid_to_chip_name(switch_chip_t id)
 {
@@ -366,14 +465,16 @@ MODULE_DEVICE_TABLE(of, rtk_gsw_match);
 static int rtl837x_gsw_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
+	struct device *dev =&pdev->dev;
 	struct device_node *mdio;
 	struct mii_bus *mdio_bus;
 	struct rtk_gsw *gsw;
 	const char *sdsmode_name;
 	rtk_sds_mode_t sdsmode;
+	struct regmap_config rc;
 	
 	int ret;
-	dev_info(&pdev->dev,"start rtl837x_gsw_probe");
+	dev_info(dev,"start rtl837x_gsw_probe");
 
 	mdio = of_parse_phandle(np, "rtl837x,mdio", 0);
 
@@ -384,11 +485,30 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	if (!mdio_bus)
 		return -EPROBE_DEFER;
 
-	gsw = devm_kzalloc(&pdev->dev, sizeof(struct rtk_gsw), GFP_KERNEL);
+	gsw = devm_kzalloc(dev, sizeof(struct rtk_gsw), GFP_KERNEL);
 	if (!gsw)
 		return -ENOMEM;	
 
-	gsw->dev = &pdev->dev;
+	mutex_init(&gsw->map_lock);
+	
+	rc = rtl837x_mdio_regmap_config;
+	rc.lock_arg = gsw;
+	gsw->map = devm_regmap_init(dev, NULL, gsw, &rc);
+	if (IS_ERR(gsw->map)) {
+		ret = PTR_ERR(gsw->map);
+		dev_err(dev, "regmap init failed: %d\n", ret);
+		return -EINVAL;
+	}
+
+	rc = rtl837x_mdio_nolock_regmap_config;
+	gsw->map_nolock = devm_regmap_init(dev, NULL, gsw, &rc);
+	if (IS_ERR(gsw->map_nolock)) {
+		ret = PTR_ERR(gsw->map_nolock);
+		dev_err(dev, "regmap init failed: %d\n", ret);
+		return -EINVAL;
+	}
+
+	gsw->dev = dev;
 	gsw->bus = mdio_bus;
 	gsw->reset_func = init_rtl837x_gsw;
 	gsw->sds0mode = SERDES_OFF;
@@ -399,19 +519,19 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 		ret = devm_gpio_request(gsw->dev, gsw->reset_pin, "rtl837x,reset-pin");
 		if (ret) {
 			dev_err(gsw->dev, "failed to request reset gpio\n");
-			devm_kfree(&pdev->dev, gsw);
+			devm_kfree(dev, gsw);
 			return ret;
 		}
 	}
 
 	if (of_property_read_u32(np, "rtl837x,cpu-port", &gsw->cpu_port)) {
 		dev_err(gsw->dev, "failed to get cpu port\n");
-		devm_kfree(&pdev->dev, gsw);
+		devm_kfree(dev, gsw);
 		return ret;
 	}
 
-	if (of_property_read_u32(np, "rtl837x,smi-addr", &gsw->smi_addr))
-		gsw->smi_addr = 0x1d;
+	if (of_property_read_u32(np, "rtl837x,smi-addr", &gsw->mdio_addr))
+		gsw->mdio_addr = 0x1d;
 
 	if (!of_property_read_string(np, "rtl837x,sds0mode", &sdsmode_name) &&
 			!rtl837x_sdsmode(sdsmode_name, &sdsmode))
@@ -424,31 +544,29 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	gsw->mib_counters = rtl837x_mib_counters;
 	gsw->num_mib_counters = ARRAY_SIZE(rtl837x_mib_counters);
 
-	dev_info(gsw->dev, "rtl837x dev info:smi-addr:%d\tcpu_port:%d\tserdes-mode:%d\n", gsw->smi_addr, gsw->cpu_port, gsw->sds0mode);
+	dev_info(gsw->dev, "rtl837x dev info:smi-addr:%d\tcpu_port:%d\tserdes-mode:%d\n", gsw->mdio_addr, gsw->cpu_port, gsw->sds0mode);
 
 	platform_set_drvdata(pdev, gsw);
-	mutex_init(&rtl_mii_lock);
-	_gsw = gsw;
-
+	gsw_regmap = gsw->map;
 	ret = rtl8372n_hw_init(gsw);
 	if (ret)
 	{
 		dev_err(gsw->dev, "rtl8372n_hw_init failed, ret=%d\n",ret);
-		devm_kfree(&pdev->dev, gsw);
+		devm_kfree(dev, gsw);
 		return -ENODEV;
 	}
 
 	ret = init_rtl837x_gsw(gsw);
 	if (ret){
 		dev_err(gsw->dev, "init_rtl837x_gsw failed, ret=%d\n", ret);
-		devm_kfree(&pdev->dev, gsw);
+		devm_kfree(dev, gsw);
 		return ret;
 	}
 
 	ret = rtl837x_swconfig_init(gsw);
 	if (ret){
 		dev_err(gsw->dev, "rtl837x_swconfig_init failed, ret=%d\n", ret);
-		devm_kfree(&pdev->dev, gsw);
+		devm_kfree(dev, gsw);
 		return ret;
 	}
 

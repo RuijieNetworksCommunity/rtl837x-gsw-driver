@@ -14,8 +14,6 @@
 
 #include <linux/printk.h>
 
-// static struct rtk_gsw *_gsw;
-
 #ifndef SWITCH_PORT_SPEED_10000
 #define SWITCH_PORT_SPEED_10000 10000
 #endif

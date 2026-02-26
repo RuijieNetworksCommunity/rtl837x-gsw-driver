@@ -8,6 +8,7 @@
 
 #include <linux/switch.h>
 #include <linux/of_mdio.h>
+#include <linux/regmap.h>
 
 #include "./rtk-api/rtk_error.h"
 #include "./rtk-api/rtk_types.h"
@@ -23,6 +24,7 @@
 #include "./rtk-api/isolation.h"
 #include "./rtk-api/igmp.h"
 #include "./rtk-api/dal/rtl8373/rtl8373_asicdrv.h"
+#include "./rtk-api/dal/rtl8373/rtl8373_smi.h"
 
 struct rtl837x_mib_counter {
 	uint16_t	base;
@@ -38,8 +40,12 @@ struct rtk_gsw {
  	struct device *dev;
  	struct mii_bus *bus;
 
+	struct regmap		*map;
+	struct regmap		*map_nolock;
+	struct mutex		map_lock;
+
 	int reset_pin;
-	int smi_addr;
+	int mdio_addr;
 
 	const char *chip_name;
 	switch_chip_t chip_id;
