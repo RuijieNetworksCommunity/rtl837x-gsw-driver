@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2025 StarField Xu <air_jinkela@163.com>
+ */
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -483,5 +488,5 @@ static struct platform_driver gsw_driver = {
 module_platform_driver(gsw_driver);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("air jinkela <air_jinkela@163.com>");
+MODULE_AUTHOR("StarField Xu <air_jinkela@163.com>");
 MODULE_DESCRIPTION("rtl8372n switch driver for MT7988");

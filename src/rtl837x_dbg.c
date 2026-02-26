@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2025 StarField Xu <air_jinkela@163.com>
+ */
+
 #include <linux/uaccess.h>
 #include <linux/trace_seq.h>
 #include <linux/seq_file.h>
