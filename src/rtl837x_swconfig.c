@@ -30,7 +30,7 @@
 
 static int rtl837x_sw_get_port_stats(struct switch_dev *dev, int port,struct switch_port_stats *stats)
 {
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
 	rtk_stat_port_get(gsw->port_map[port], 0, &(stats->tx_bytes));             // tx_bytes
 	rtk_stat_port_get(gsw->port_map[port], 2u, &(stats->rx_bytes));                // rx_bytes
@@ -45,129 +45,129 @@ static int rtl837x_sw_get_port_stats(struct switch_dev *dev, int port,struct swi
  */
 static int rtl837x_sw_apply_config(struct switch_dev *swdev)
 {
-    struct rtk_gsw *gsw = container_of(swdev, struct rtk_gsw, sw_dev);
+	struct rtk_gsw *gsw = container_of(swdev, struct rtk_gsw, sw_dev);
 
-    int ret = 0;
+	int ret = 0;
 
 	dev_info(gsw->dev, "rtl837x Apply Config\n");
-    
-    // ====================== 1. 应用流控配置 ======================
-    dev_info(gsw->dev, "rtl837x Apply flow control\n");
-    for (int port = 0; port < gsw->num_ports; port++) {
-        // 跳过CPU端口和特定端口
-        if (port != 0 && port != swdev->cpu_port && port != 5) {
-            rtk_port_phy_ability_t ana = {
-                .Half_10 = 1,
-                .Full_10 = 1,
-                .Half_100 = 1,
-                .Full_100 = 1,
-                .Half_1000 = 1,
-                .Full_1000 = 1,
-                .adv_2_5G = 1,
-                .adv_5G = 0,
-                .adv_10GBase_T = 0,
-                .FC = 0,
-                .AsyFC = 0,
-            };
-            if ((gsw->flow_control_map >> port) & 1)
-            {
-                ana.FC = 1;
-                ana.AsyFC = 1;
-            }
-            // 设置端口自动协商能力
-            ret = rtk_phy_common_c45_autoSpeed_set(gsw->port_map[port], &ana);
-            if (ret) {
-                dev_err(gsw->dev, "Port %d autoNegoAbility configure Failed: %d", port, ret);
-                return -EIO;
-            }
-        }
-    }
-    
-    // ====================== 2. 应用VLAN配置 ======================
-    if (gsw->global_vlan_enable)
-    {
+	
+	// ====================== 1. 应用流控配置 ======================
+	dev_info(gsw->dev, "rtl837x Apply flow control\n");
+	for (int port = 0; port < gsw->num_ports; port++) {
+		// 跳过CPU端口和特定端口
+		if (port != 0 && port != swdev->cpu_port && port != 5) {
+			rtk_port_phy_ability_t ana = {
+				.Half_10 = 1,
+				.Full_10 = 1,
+				.Half_100 = 1,
+				.Full_100 = 1,
+				.Half_1000 = 1,
+				.Full_1000 = 1,
+				.adv_2_5G = 1,
+				.adv_5G = 0,
+				.adv_10GBase_T = 0,
+				.FC = 0,
+				.AsyFC = 0,
+			};
+			if ((gsw->flow_control_map >> port) & 1)
+			{
+				ana.FC = 1;
+				ana.AsyFC = 1;
+			}
+			// 设置端口自动协商能力
+			ret = rtk_phy_common_c45_autoSpeed_set(gsw->port_map[port], &ana);
+			if (ret) {
+				dev_err(gsw->dev, "Port %d autoNegoAbility configure Failed: %d", port, ret);
+				return -EIO;
+			}
+		}
+	}
+	
+	// ====================== 2. 应用VLAN配置 ======================
+	if (gsw->global_vlan_enable)
+	{
 		dev_info(gsw->dev, "rtl837x Apply Vlan config\n");
-        // 重置VLAN配置
-        rtk_vlan_reset();
-        
-        // 设置所有VLAN条目
-        for (int vlan_id = 0; vlan_id < swdev->vlans; vlan_id++) {
-            if (gsw->vlan_table[vlan_id].valid == 1) {
-                rtk_vlan_entry_t vlan_cfg = {
-                    .mbr.bits[0] = gsw->vlan_table[vlan_id].mbr,
-                    .untag.bits[0] = gsw->vlan_table[vlan_id].untag,
+		// 重置VLAN配置
+		rtk_vlan_reset();
+		
+		// 设置所有VLAN条目
+		for (int vlan_id = 0; vlan_id < swdev->vlans; vlan_id++) {
+			if (gsw->vlan_table[vlan_id].valid == 1) {
+				rtk_vlan_entry_t vlan_cfg = {
+					.mbr.bits[0] = gsw->vlan_table[vlan_id].mbr,
+					.untag.bits[0] = gsw->vlan_table[vlan_id].untag,
 					.svlan_chk_ivl_svl = 0,
 					.fid_msti = 0,
 					.ivl_svl = 1,
-                };
+				};
 				dev_info(gsw->dev, "rtl837x VLAN mbr:%u\tntag:%u\n",vlan_cfg.mbr.bits[0], vlan_cfg.untag.bits[0]);
-                
-                ret = rtk_vlan_set(vlan_id, &vlan_cfg);
-                if (ret) {
-                    dev_err(gsw->dev, "VLAN %d configure Failed: %d", vlan_id, ret);
-                    return -EIO;
-                }
-            }
-        }
+				
+				ret = rtk_vlan_set(vlan_id, &vlan_cfg);
+				if (ret) {
+					dev_err(gsw->dev, "VLAN %d configure Failed: %d", vlan_id, ret);
+					return -EIO;
+				}
+			}
+		}
 
 		dev_info(gsw->dev, "rtl837x Apply PVID\n");
-        // ====================== 3. 应用PVID配置 ======================
-        for (int port = 0; port < swdev->ports; port++) {
-            ret = rtk_vlan_portPvid_set(
-                gsw->port_map[port], 
-                gsw->port_pvid[port]
-            );
-            
-            if (ret) {
-                dev_err(gsw->dev, "port %d PVID configure Failed: %d", port, ret);
-                return -EIO;
-            }
-        }
-    }
-    // ====================== 4. 应用端口隔离配置 ======================
-    else
-    {
-        // 获取CPU端口的物理端口号
-        rtk_uint32 cpu_phy_port = gsw->port_map[swdev->cpu_port];
-        rtk_uint32 isolation_map = 0;
-        
-        // 构建隔离映射
-        for (int port = 0; port < swdev->ports; port++) {
-            // 跳过CPU端口
-            if (port != swdev->cpu_port) {
-                uint8_t phy_port = gsw->port_map[port];
-                
-                // 添加端口到隔离映射
-                isolation_map |= (1 << phy_port);
-                
-                // 设置端口隔离
-                ret = rtk_port_isolation_set(phy_port, (1 << cpu_phy_port));
-                if (ret) {
-                    dev_err(gsw->dev, "Port %d isolation configure Failed: %d", port, ret);
-                    return -EIO;
-                }
-            }
-        }
-        
-        // 设置CPU端口的隔离
-        ret = rtk_port_isolation_set(cpu_phy_port, isolation_map);
-        if (ret) {
-            dev_err(gsw->dev, "CPU port isolation configure Failed: %d", ret);
-            return -EIO;
-        }
-    }
-    return 0;
+		// ====================== 3. 应用PVID配置 ======================
+		for (int port = 0; port < swdev->ports; port++) {
+			ret = rtk_vlan_portPvid_set(
+				gsw->port_map[port], 
+				gsw->port_pvid[port]
+			);
+			
+			if (ret) {
+				dev_err(gsw->dev, "port %d PVID configure Failed: %d", port, ret);
+				return -EIO;
+			}
+		}
+	}
+	// ====================== 4. 应用端口隔离配置 ======================
+	else
+	{
+		// 获取CPU端口的物理端口号
+		rtk_uint32 cpu_phy_port = gsw->port_map[swdev->cpu_port];
+		rtk_uint32 isolation_map = 0;
+		
+		// 构建隔离映射
+		for (int port = 0; port < swdev->ports; port++) {
+			// 跳过CPU端口
+			if (port != swdev->cpu_port) {
+				uint8_t phy_port = gsw->port_map[port];
+				
+				// 添加端口到隔离映射
+				isolation_map |= (1 << phy_port);
+				
+				// 设置端口隔离
+				ret = rtk_port_isolation_set(phy_port, (1 << cpu_phy_port));
+				if (ret) {
+					dev_err(gsw->dev, "Port %d isolation configure Failed: %d", port, ret);
+					return -EIO;
+				}
+			}
+		}
+		
+		// 设置CPU端口的隔离
+		ret = rtk_port_isolation_set(cpu_phy_port, isolation_map);
+		if (ret) {
+			dev_err(gsw->dev, "CPU port isolation configure Failed: %d", ret);
+			return -EIO;
+		}
+	}
+	return 0;
 }
 
 static int rtl837x_sw_get_vlan_ports(struct switch_dev *dev, struct switch_val *val)
 {
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
 	val->len = 0;
-    if(!(gsw->vlan_table[val->port_vlan].valid)) return 0;
+	if(!(gsw->vlan_table[val->port_vlan].valid)) return 0;
 	rtk_vlan_entry_t vlan_cfg;
 	if (rtk_vlan_get(val->port_vlan, &vlan_cfg)) return -EINVAL;
-    if (!vlan_cfg.ivl_svl) return 0; //跳过下面的多余循环
+	if (!vlan_cfg.ivl_svl) return 0; //跳过下面的多余循环
 
 	struct switch_port *port = &val->value.ports[0];
 	for(int i = 0;i < gsw->num_ports;i++){
@@ -191,60 +191,60 @@ static int rtl837x_sw_get_vlan_ports(struct switch_dev *dev, struct switch_val *
  */
 static int rtl837x_sw_set_vlan_ports(struct switch_dev *dev, struct switch_val *vlan_val)
 {
-    // 获取 VLAN ID
-    rtk_uint32 vlan_id = vlan_val->port_vlan;
-    
-    // 验证 VLAN ID 范围 (1-4094)
-    if (vlan_id < 1 || vlan_id > 4094) return -EINVAL;
-    
-    // 获取设备数据
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
-    
-    // 验证端口数量
-    uint32_t port_count = vlan_val->len;
-    
+	// 获取 VLAN ID
+	rtk_uint32 vlan_id = vlan_val->port_vlan;
+	
+	// 验证 VLAN ID 范围 (1-4094)
+	if (vlan_id < 1 || vlan_id > 4094) return -EINVAL;
+	
+	// 获取设备数据
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	
+	// 验证端口数量
+	uint32_t port_count = vlan_val->len;
+	
 
-    rtk_uint32 vlan_mbr = 0;      // 所有成员端口位图
-    rtk_uint32 vlan_untag = 0; // 未标记端口位图
-    
-    // 处理每个端口
-    if (port_count > 0) {
-        struct switch_port *port_list = vlan_val->value.ports;
-        
-        for (uint32_t i = 0; i < port_count; i++) {
-            // 获取物理端口号
-            rtk_uint32 physical_port = port_list[i].id;
-            
-            // 获取逻辑端口索引
-            rtk_uint32 logical_port = gsw->port_map[physical_port];
-            
-            // 计算端口位掩码
-            rtk_uint32 port_mask = BIT(logical_port);
-            
-            // 添加到所有端口位图
-            vlan_mbr |= port_mask;
-            
-            // 如果是未标记端口，添加到未标记位图
-            if (!(port_list[i].flags & BIT(SWITCH_PORT_FLAG_TAGGED))) {
-                vlan_untag |= port_mask;
-            }
-        }
-    }
-    
-    // 更新 VLAN 配置
-    gsw->vlan_table[vlan_id].vid = vlan_id;
-    gsw->vlan_table[vlan_id].mbr = vlan_mbr;
-    gsw->vlan_table[vlan_id].untag = vlan_untag;
-    gsw->vlan_table[vlan_id].valid = 1;
+	rtk_uint32 vlan_mbr = 0;      // 所有成员端口位图
+	rtk_uint32 vlan_untag = 0; // 未标记端口位图
+	
+	// 处理每个端口
+	if (port_count > 0) {
+		struct switch_port *port_list = vlan_val->value.ports;
+		
+		for (uint32_t i = 0; i < port_count; i++) {
+			// 获取物理端口号
+			rtk_uint32 physical_port = port_list[i].id;
+			
+			// 获取逻辑端口索引
+			rtk_uint32 logical_port = gsw->port_map[physical_port];
+			
+			// 计算端口位掩码
+			rtk_uint32 port_mask = BIT(logical_port);
+			
+			// 添加到所有端口位图
+			vlan_mbr |= port_mask;
+			
+			// 如果是未标记端口，添加到未标记位图
+			if (!(port_list[i].flags & BIT(SWITCH_PORT_FLAG_TAGGED))) {
+				vlan_untag |= port_mask;
+			}
+		}
+	}
+	
+	// 更新 VLAN 配置
+	gsw->vlan_table[vlan_id].vid = vlan_id;
+	gsw->vlan_table[vlan_id].mbr = vlan_mbr;
+	gsw->vlan_table[vlan_id].untag = vlan_untag;
+	gsw->vlan_table[vlan_id].valid = 1;
 	dev_info(gsw->dev, "vlanid:%u\tportmap:%016x\tuntag:%016x\tvalid:%u\n",gsw->vlan_table[vlan_id].vid, gsw->vlan_table[vlan_id].mbr, gsw->vlan_table[vlan_id].untag, gsw->vlan_table[vlan_id].valid);
 	// rtl837x_apply_config(dev);
-    return 0;
+	return 0;
 }
 
 static int rtl837x_sw_get_port_pvid(struct switch_dev *dev, int port, int *val)
 {
 	int result; // x0
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
 	if (port > gsw->num_ports) return -EINVAL;
 
@@ -259,13 +259,13 @@ static int rtl837x_sw_get_port_pvid(struct switch_dev *dev, int port, int *val)
 
 static int rtl837x_sw_set_port_pvid(struct switch_dev *dev, int port, int val)
 {
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
-    if (port > gsw->num_ports) return -22;
+	if (port > gsw->num_ports) return -22;
 
-    gsw->port_pvid[port] = val;
+	gsw->port_pvid[port] = val;
 
-    return 0;
+	return 0;
 }
 
 /**
@@ -277,71 +277,71 @@ static int rtl837x_sw_set_port_pvid(struct switch_dev *dev, int port, int val)
  */
 static uint32_t convert_speed_code(uint32_t speed_code)
 {
-    switch (speed_code) {
-        case 0:		return SWITCH_PORT_SPEED_10;
-        case 1:   	return SWITCH_PORT_SPEED_100;
-        case 2:     return SWITCH_PORT_SPEED_1000;
-        case 4:    	return SWITCH_PORT_SPEED_10000;
-        case 5:    	return SWITCH_PORT_SPEED_2500;
-        case 6:    	return SWITCH_PORT_SPEED_5000;
-        default:    return SWITCH_PORT_SPEED_UNKNOWN; // 未知状态
-    }
+	switch (speed_code) {
+		case 0:		return SWITCH_PORT_SPEED_10;
+		case 1:   	return SWITCH_PORT_SPEED_100;
+		case 2:     return SWITCH_PORT_SPEED_1000;
+		case 4:    	return SWITCH_PORT_SPEED_10000;
+		case 5:    	return SWITCH_PORT_SPEED_2500;
+		case 6:    	return SWITCH_PORT_SPEED_5000;
+		default:    return SWITCH_PORT_SPEED_UNKNOWN; // 未知状态
+	}
 }
 
 static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, struct switch_port_link *link)
 {
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
-    ret_t ret;
-    // 检查端口有效性
-    if (port >= gsw->num_ports) {
-        dev_err(gsw->dev, "Invalid Port: %u", port);
-        return -EINVAL;
-    }
-    
-    // 获取物理端口号
-    rtk_uint32 phy_port = gsw->port_map[port];
-    
-    // 获取MAC状态信息
-    rtk_port_status_t port_status;
-    ret = rtk_port_macStatus_get(phy_port, &port_status);
-    if(ret)
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	ret_t ret;
+	// 检查端口有效性
+	if (port >= gsw->num_ports) {
+		dev_err(gsw->dev, "Invalid Port: %u", port);
+		return -EINVAL;
+	}
+	
+	// 获取物理端口号
+	rtk_uint32 phy_port = gsw->port_map[port];
+	
+	// 获取MAC状态信息
+	rtk_port_status_t port_status;
+	ret = rtk_port_macStatus_get(phy_port, &port_status);
+	if(ret)
 	{
-        dev_err(gsw->dev, 
-                "get port:%u MAC status Failed: %d", 
-                port, ret);
-        return -EINVAL;
-    }
-    
-    // 获取自动协商状态（特殊端口除外）
-    bool auto_neg_enabled = 1;
-    
-    // 特殊端口：管理端口或端口5
-    const bool is_special_port = (port == gsw->cpu_port) || (port == 5);
-    
-    if (!is_special_port) {
-        rtk_uint32 auto_neg_value;
-        ret = rtk_phy_common_c45_autoNegoEnable_get(phy_port, &auto_neg_value);
-        if (ret != RT_ERR_OK) {
-            dev_err(gsw->dev, 
-                    "get port:%u autoNegoAbility status Failed: %d", 
-                    port, auto_neg_value);
-            return -EIO;
-        }
-        auto_neg_enabled = (auto_neg_value != 0);
-    }
-    
-    // 解析并填充链路状态
-    struct switch_port_link result = {
-        .link = (port_status.link != 0),
-        .duplex = (port_status.duplex != 0),
-        .aneg = auto_neg_enabled,
-        .tx_flow = (port_status.txpause != 0),
-        .rx_flow = (port_status.rxpause != 0),
-        .speed = convert_speed_code(port_status.speed)
-    };
+		dev_err(gsw->dev, 
+				"get port:%u MAC status Failed: %d", 
+				port, ret);
+		return -EINVAL;
+	}
+	
+	// 获取自动协商状态（特殊端口除外）
+	bool auto_neg_enabled = 1;
+	
+	// 特殊端口：管理端口或端口5
+	const bool is_special_port = (port == gsw->cpu_port) || (port == 5);
+	
+	if (!is_special_port) {
+		rtk_uint32 auto_neg_value;
+		ret = rtk_phy_common_c45_autoNegoEnable_get(phy_port, &auto_neg_value);
+		if (ret != RT_ERR_OK) {
+			dev_err(gsw->dev, 
+					"get port:%u autoNegoAbility status Failed: %d", 
+					port, auto_neg_value);
+			return -EIO;
+		}
+		auto_neg_enabled = (auto_neg_value != 0);
+	}
+	
+	// 解析并填充链路状态
+	struct switch_port_link result = {
+		.link = (port_status.link != 0),
+		.duplex = (port_status.duplex != 0),
+		.aneg = auto_neg_enabled,
+		.tx_flow = (port_status.txpause != 0),
+		.rx_flow = (port_status.rxpause != 0),
+		.speed = convert_speed_code(port_status.speed)
+	};
 
-    *link = result;
-    return 0;
+	*link = result;
+	return 0;
 }
 
 static int rtl837x_sw_set_port_link(struct switch_dev *dev, int port, struct switch_port_link *link)
@@ -356,55 +356,55 @@ static int rtl837x_sw_reset_switch(struct switch_dev *dev)
 
 static int rtl837x_sw_set_vlan_enable(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 	gsw->global_vlan_enable = val->value.i;
 	return 0;
 }
 
 static int rtl837x_sw_get_flowcontrol_ports(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
-    val->value.i = gsw->flow_control_map;
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	val->value.i = gsw->flow_control_map;
 	return 0;
 }
 
 static int rtl837x_sw_set_flowcontrol_ports(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 	gsw->flow_control_map = val->value.i;
 	return 0;
 }
 
 static int rtl837x_sw_get_vlan_enable(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
-    val->value.i = gsw->global_vlan_enable;
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	val->value.i = gsw->global_vlan_enable;
 	return 0;
 }
 
 static int rtl837x_sw_reset_mibs(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
-    // struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
-    rtk_stat_global_reset();
+	// struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	rtk_stat_global_reset();
 	return 0;
 }
 
 static int rtl837x_sw_reset_port_mibs(struct switch_dev *dev,const struct switch_attr *attr,struct switch_val *val)
 {
 	rtk_uint32 port;
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
 	port = val->port_vlan;
 	if (port >= 9) return -EINVAL;
 
-    rtk_stat_port_reset(gsw->port_map[port]);
+	rtk_stat_port_reset(gsw->port_map[port]);
 
 	return 0;
 }
 
 static int rtl837x_sw_get_port_mib(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {	
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
 	int i, len = 0;
 	rtk_stat_counter_t counter = 0;
@@ -431,9 +431,9 @@ static int rtl837x_sw_get_port_mib(struct switch_dev *dev, const struct switch_a
 
 static int rtl837x_sw_reset_sds0mode(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
-    struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
-    ret_t ret;
-    ret = rtk_sdsMode_set(0, gsw->sds0mode);
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+	ret_t ret;
+	ret = rtk_sdsMode_set(0, gsw->sds0mode);
 	if (ret)
 		return -EPERM;
 	return 0;
@@ -458,12 +458,12 @@ static struct switch_attr rtl832n_globals[] = {
 		.description = "set hw flow control of port mask (1f: all ports)",
 		.set = rtl837x_sw_set_flowcontrol_ports,
 		.get = rtl837x_sw_get_flowcontrol_ports,
-    }, {
-        .type = SWITCH_TYPE_NOVAL,
-        .name = "reset_serdes0",
-        .description = "Reset Serdes 0",
-        .set = rtl837x_sw_reset_sds0mode,
-    }
+	}, {
+		.type = SWITCH_TYPE_NOVAL,
+		.name = "reset_serdes0",
+		.description = "Reset Serdes 0",
+		.set = rtl837x_sw_reset_sds0mode,
+	}
 };
 
 static struct switch_attr rtl837x_port[] = {
@@ -482,9 +482,9 @@ static struct switch_attr rtl837x_port[] = {
 };
 
 static const struct switch_dev_ops rtl8372n_sw_ops = {
-    .attr_global = { .attr = rtl832n_globals, .n_attr = ARRAY_SIZE(rtl832n_globals)},
-    // .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
-    .attr_vlan = { .attr = NULL, .n_attr = 0 },
+	.attr_global = { .attr = rtl832n_globals, .n_attr = ARRAY_SIZE(rtl832n_globals)},
+	// .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
+	.attr_vlan = { .attr = NULL, .n_attr = 0 },
 
 	.get_vlan_ports = rtl837x_sw_get_vlan_ports,
 	.set_vlan_ports = rtl837x_sw_set_vlan_ports,
@@ -519,7 +519,7 @@ int rtl837x_swconfig_init(struct rtk_gsw *gsw)
 		dev_err(gsw->dev, "switch registration failed\n");
 
 	gsw->global_vlan_enable = true; 
-    gsw->flow_control_map = 0x1f; //启用所有端口的autoNegoAbility
+	gsw->flow_control_map = 0x1f; //启用所有端口的autoNegoAbility
 
 	return err;
 }

@@ -107,25 +107,25 @@ unsigned int mii_mgr_write(unsigned int phy_addr,
 
 static char* chipid_to_chip_name(switch_chip_t id)
 {
-    switch (id)
-    {
-    case CHIP_RTL8373:
-        return "RTL8373";
-    case CHIP_RTL8372:
-        return "RTL8372";
-    case CHIP_RTL8224:
-        return "RTL8224";
-    case CHIP_RTL8373N:
-        return "RTL8373N";
-    case CHIP_RTL8372N:
-        return "RTL8372N";
-    case CHIP_RTL8224N:
-        return "RTL8224N";
-    case CHIP_RTL8366U:
-        return "RTL8366U";
-    default:
-        return "Unknow";
-    }
+	switch (id)
+	{
+	case CHIP_RTL8373:
+		return "RTL8373";
+	case CHIP_RTL8372:
+		return "RTL8372";
+	case CHIP_RTL8224:
+		return "RTL8224";
+	case CHIP_RTL8373N:
+		return "RTL8373N";
+	case CHIP_RTL8372N:
+		return "RTL8372N";
+	case CHIP_RTL8224N:
+		return "RTL8224N";
+	case CHIP_RTL8366U:
+		return "RTL8366U";
+	default:
+		return "Unknow";
+	}
 }
 
 static int rtl837x_switch_probe(struct rtk_gsw *gsw)
@@ -160,8 +160,8 @@ static int rtl837x_switch_probe(struct rtk_gsw *gsw)
 
 CHIP_NOT_SUPPORTED:
 	//未知芯片ID
-    rtk_uint32 regValue;
-    rtl8373_getAsicReg(0x4, &regValue);
+	rtk_uint32 regValue;
+	rtl8373_getAsicReg(0x4, &regValue);
 	dev_err(gsw->dev, "Error: Can not support this device, devid 0x%x\n", regValue);
 	return RT_ERR_CHIP_NOT_SUPPORTED;
 
@@ -266,25 +266,25 @@ static int rtl8372n_hw_init(struct rtk_gsw *gsw)
 	}
 
 	ret = rtk_vlan_reset();
-    if (ret)
-    {
+	if (ret)
+	{
 		dev_err(gsw->dev, "rtk_vlan_reset failed, error:%d\n", ret);
 		return -EPERM;
-    }
+	}
 
 	ret = rtk_vlan_init();
-    if (ret)
-    {
+	if (ret)
+	{
 		dev_err(gsw->dev, "rtk_vlan_init failed, error:%d\n", ret);
 		return -EPERM;
-    }
+	}
 
 	ret = rtl8372n_igmp_init(gsw);
-    if (ret)
-    {
+	if (ret)
+	{
 		dev_err(gsw->dev, "rtl8372n_igmp_init failed, error:%d\n", ret);
 		return -EPERM;
-    }
+	}
 
 	return 0;
 }
@@ -301,7 +301,7 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 	return -EPERM;
 	}
 
-	pRmacfg.operation = RMAOP_FORWARD;                   // 清零配置
+	pRmacfg.operation = RMAOP_FORWARD; // 清零配置
 	ret = rtk_rma_set(2, &pRmacfg);
 	if ( ret )
 	{

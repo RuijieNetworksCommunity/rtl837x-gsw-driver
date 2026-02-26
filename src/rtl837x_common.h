@@ -52,21 +52,21 @@ struct rtk_gsw {
 	struct switch_dev sw_dev;
 	unsigned int cpu_port;
 
-    struct rtl837x_mib_counter *mib_counters;
+	struct rtl837x_mib_counter *mib_counters;
 	unsigned int num_mib_counters;
 
-    struct {
-        uint8_t valid;                 // 条目是否有效
-        uint16_t vid;                // VLAN ID
-        uint16_t mbr;           // 成员端口位图
-        uint16_t untag;       // 未标记端口位图
-    } vlan_table[4096];        // VLAN 配置表
-	
+	struct {
+		uint8_t valid;  // 条目是否有效
+		uint16_t vid;   // VLAN ID
+		uint16_t mbr;   // 成员端口位图
+		uint16_t untag; // 未标记端口位图
+	} vlan_table[4096]; // VLAN 配置表
+
 	char buf[4096];
 
-    uint16_t port_pvid[6];  // 端口PVID配置
+	uint16_t port_pvid[6];  // 端口PVID配置
 
-	uint16_t flow_control_map;      // 流控配置位图    
+	uint16_t flow_control_map; // 流控配置位图
 	bool global_vlan_enable;
 
 	int (*reset_func)(struct rtk_gsw *gsw);

@@ -25,58 +25,58 @@ static struct proc_dir_entry *proc_sds_page5;
 
 static int sds_reg_read(struct seq_file *seq, void *v)
 {
-    unsigned int v3;
+	unsigned int v3;
 
-    rtk_rtl8373_getAsicReg(RTL8373_SDS_MODE_SEL_ADDR, &v3);
-    seq_printf(seq, "reg 0x7b20: %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x21u, 0x10u, &v3);
-    seq_printf(seq, "sds page 0x21  reg 0x10; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x21u, 0x13u, &v3);
-    seq_printf(seq, "sds page 0x21  reg 0x13; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x21u, 0x18u, &v3);
-    seq_printf(seq, "sds page 0x21  reg 0x18; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x21u, 0x1Bu, &v3);
-    seq_printf(seq, "sds page 0x21  reg 0x1b; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x21u, 0x1Du, &v3);
-    seq_printf(seq, "sds page 0x21  reg 0x1d; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x36u, 0x1Cu, &v3);
-    seq_printf(seq, "sds page 0x36  reg 0x1c; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x36u, 0x14u, &v3);
-    seq_printf(seq, "sds page 0x36  reg 0x14; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x36u, 0x10u, &v3);
-    seq_printf(seq, "sds page 0x36  reg 0x10; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 4u, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x04; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 6u, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x06; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 7u, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x07; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 9u, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x09; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0xBu, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x0b; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0xCu, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x0c; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0xDu, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x0d; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0x15u, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x15; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0x16u, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x16; data = %#x\n", v3);
-    rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0x1Du, &v3);
-    seq_printf(seq, "sds page 0x2e  reg 0x1d; data = %#x\n", v3);
-    return 0LL;
+	rtk_rtl8373_getAsicReg(RTL8373_SDS_MODE_SEL_ADDR, &v3);
+	seq_printf(seq, "reg 0x7b20: %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x21u, 0x10u, &v3);
+	seq_printf(seq, "sds page 0x21  reg 0x10; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x21u, 0x13u, &v3);
+	seq_printf(seq, "sds page 0x21  reg 0x13; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x21u, 0x18u, &v3);
+	seq_printf(seq, "sds page 0x21  reg 0x18; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x21u, 0x1Bu, &v3);
+	seq_printf(seq, "sds page 0x21  reg 0x1b; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x21u, 0x1Du, &v3);
+	seq_printf(seq, "sds page 0x21  reg 0x1d; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x36u, 0x1Cu, &v3);
+	seq_printf(seq, "sds page 0x36  reg 0x1c; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x36u, 0x14u, &v3);
+	seq_printf(seq, "sds page 0x36  reg 0x14; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x36u, 0x10u, &v3);
+	seq_printf(seq, "sds page 0x36  reg 0x10; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 4u, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x04; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 6u, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x06; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 7u, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x07; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 9u, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x09; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0xBu, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x0b; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0xCu, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x0c; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0xDu, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x0d; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0x15u, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x15; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0x16u, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x16; data = %#x\n", v3);
+	rtk_rtl8373_sds_reg_read(0, 0x2Eu, 0x1Du, &v3);
+	seq_printf(seq, "sds page 0x2e  reg 0x1d; data = %#x\n", v3);
+	return 0LL;
 }
 
 static int sds_page5_read(struct seq_file *seq, void *v)
 {
-    unsigned int v3;
+	unsigned int v3;
 
-    rtk_rtl8373_sds_regbits_read(0LL, 5LL, 0LL, 1LL, &v3);
-    seq_printf(seq, "sds page 5  reg 0; bit0 = %#x\n", v3);
-    rtk_rtl8373_sds_regbits_read(0LL, 5LL, 1LL, 255LL, &v3);
-    seq_printf(seq, "sds page 5  reg 1; bit7:0 = %#x\n", v3);
-    return 0LL;
+	rtk_rtl8373_sds_regbits_read(0LL, 5LL, 0LL, 1LL, &v3);
+	seq_printf(seq, "sds page 5  reg 0; bit0 = %#x\n", v3);
+	rtk_rtl8373_sds_regbits_read(0LL, 5LL, 1LL, 255LL, &v3);
+	seq_printf(seq, "sds page 5  reg 1; bit7:0 = %#x\n", v3);
+	return 0LL;
 }
 
 
@@ -127,9 +127,9 @@ int rtl837x_debug_proc_init(void)
 int rtl837x_debug_proc_deinit(void)
 {
 
-    proc_remove(proc_sds_page5);
-    proc_remove(proc_sds_reg);
-    proc_remove(proc_reg_dir);
+	proc_remove(proc_sds_page5);
+	proc_remove(proc_sds_reg);
+	proc_remove(proc_reg_dir);
 
 	return 0;
 }
