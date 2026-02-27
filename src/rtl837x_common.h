@@ -44,7 +44,7 @@ struct rtk_gsw {
 	struct regmap		*map_nolock;
 	struct mutex		map_lock;
 
-	int reset_pin;
+	struct gpio_desc *reset_pin;
 	int mdio_addr;
 
 	const char *chip_name;
