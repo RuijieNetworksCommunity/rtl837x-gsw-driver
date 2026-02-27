@@ -9,13 +9,12 @@
 #include <linux/version.h>
 #include <linux/device.h>
 #include <linux/delay.h>
-#include <linux/of_platform.h>
+#include <linux/of_mdio.h>
 #include <linux/of_gpio.h>
 #include <linux/of_net.h>
 #include <linux/gpio/consumer.h>
 #include <linux/mutex.h>
 #include <linux/jiffies.h>
-#include <linux/platform_device.h>
 #include <linux/errno.h>
 #include <net/rtnetlink.h>
 
@@ -276,21 +275,17 @@ END_DETECT_CHIP:
 
 static int rtl837x_hw_reset(struct rtk_gsw *gsw)
 {
-	if (gsw->reset_pin < 0)
-		return 0;
-	dev_info(gsw->dev, "START HW RESET");
-	gpio_direction_output(gsw->reset_pin, 0);
+	if (!IS_ERR(gsw->reset_pin)) {
+		dev_info(gsw->dev, "START HW RESET");
+		gpiod_set_value(gsw->reset_pin, 1);
+		mdelay(50);
+		gpiod_set_value(gsw->reset_pin, 0);
+		mdelay(50);
+		gpiod_set_value(gsw->reset_pin, 1);
+		mdelay(50);
+		dev_info(gsw->dev, "FINISH HW RESET");
+	}
 
-	gpio_set_value(gsw->reset_pin, 1);
-	mdelay(50);
-
-	gpio_set_value(gsw->reset_pin, 0);
-	mdelay(50);
-
-	gpio_set_value(gsw->reset_pin, 1);
-	mdelay(50);
-
-	dev_info(gsw->dev, "FINISH HW RESET");
 	return 0;
 }
 
@@ -509,12 +504,10 @@ static const struct of_device_id rtk_gsw_match[] = {
 
 MODULE_DEVICE_TABLE(of, rtk_gsw_match);
 
-static int rtl837x_gsw_probe(struct platform_device *pdev)
+static int rtl837x_gsw_probe(struct mdio_device *mdiodev)
 {
-	struct device_node *np = pdev->dev.of_node;
-	struct device *dev =&pdev->dev;
-	struct device_node *mdio;
-	struct mii_bus *mdio_bus;
+	struct device *dev =&mdiodev->dev;
+	struct device_node *np = dev->of_node;
 	struct rtk_gsw *gsw;
 	struct device_node *ethernet;
 	struct net_device *master;
@@ -524,15 +517,6 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	
 	int ret;
 	dev_info(dev,"start rtl837x_gsw_probe");
-
-	mdio = of_parse_phandle(np, "rtl837x,mdio", 0);
-
-	if (!mdio)
-		return -EINVAL;
-
-	mdio_bus = of_mdio_find_bus(mdio);
-	if (!mdio_bus)
-		return -EPROBE_DEFER;
 
 	ethernet = of_parse_phandle(np, "ethernet", 0);
 	if (!ethernet) 
@@ -567,20 +551,15 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	}
 
 	gsw->dev = dev;
-	gsw->bus = mdio_bus;
+	gsw->bus = mdiodev->bus;
 	gsw->ethernet_master = master;
 	gsw->reset_func = init_rtl837x_gsw;
 	gsw->sds0mode = SERDES_OFF;
 	gsw->sds1mode = SERDES_OFF;
 
-	gsw->reset_pin = of_get_named_gpio(np, "rtl837x,reset-pin", 0);
-	if (gsw->reset_pin >= 0) {
-		ret = devm_gpio_request(gsw->dev, gsw->reset_pin, "rtl837x,reset-pin");
-		if (ret) {
-			dev_err(gsw->dev, "failed to request reset gpio\n");
-			devm_kfree(dev, gsw);
-			return ret;
-		}
+	gsw->reset_pin = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
+	if (IS_ERR(gsw->reset_pin)) {
+		dev_warn(dev, "failed to get RESET GPIO!!!\n");
 	}
 
 	if (of_property_read_u32(np, "rtl837x,cpu-port", &gsw->cpu_port)) {
@@ -588,9 +567,6 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 		devm_kfree(dev, gsw);
 		return ret;
 	}
-
-	if (of_property_read_u32(np, "rtl837x,smi-addr", &gsw->mdio_addr))
-		gsw->mdio_addr = 0x1d;
 
 	if (!of_property_read_string(np, "rtl837x,sds0mode", &sdsmode_name) &&
 			!rtl837x_sdsmode(sdsmode_name, &sdsmode))
@@ -600,13 +576,15 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 			!rtl837x_sdsmode(sdsmode_name, &sdsmode))
 		gsw->sds1mode = sdsmode;
 
+	gsw->mdio_addr = mdiodev->addr;
 	gsw->mib_counters = rtl837x_mib_counters;
 	gsw->num_mib_counters = ARRAY_SIZE(rtl837x_mib_counters);
 
 	dev_info(gsw->dev, "rtl837x dev info:smi-addr:%d\tcpu_port:%d\tserdes-mode:%d\n", gsw->mdio_addr, gsw->cpu_port, gsw->sds0mode);
 
-	platform_set_drvdata(pdev, gsw);
+	dev_set_drvdata(dev, gsw);
 	gsw_regmap = gsw->map;
+
 	ret = rtl8372n_hw_init(gsw);
 	if (ret)
 	{
@@ -634,40 +612,34 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static void _rtl837x_gsw_remove(struct platform_device *pdev)
+static void rtl837x_gsw_remove(struct mdio_device *mdiodev)
 {
-	struct rtk_gsw *gsw = platform_get_drvdata(pdev);
+	struct rtk_gsw *gsw = dev_get_drvdata(&mdiodev->dev);;
 	cancel_delayed_work_sync(&gsw->status_check_work);
 	unregister_switch(&gsw->sw_dev);
 	rtl837x_debug_proc_deinit();
-	platform_set_drvdata(pdev, NULL);
 }
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(6,10,0)
-static int rtl837x_gsw_remove(struct platform_device *pdev)
+static void rtl837x_gsw_shutdown(struct mdio_device *mdiodev)
 {
-	_rtl837x_gsw_remove(pdev);
-	return 0;
+	struct rtk_gsw *gsw = dev_get_drvdata(&mdiodev->dev);
+
+	if (!gsw)
+		return;
+
+	dev_set_drvdata(&mdiodev->dev, NULL);
 }
-#else
-static void rtl837x_gsw_remove(struct platform_device *pdev)
-{
-	_rtl837x_gsw_remove(pdev);
-}
-#endif
 
-
-
-static struct platform_driver gsw_driver = {
-	.probe = rtl837x_gsw_probe,
-	.remove = rtl837x_gsw_remove,
-	.driver = {
+static struct mdio_driver rtl837x_mdio_driver = {
+	.mdiodrv.driver = {
 		.name = "rtl837x-gsw",
 		.of_match_table = rtk_gsw_match,
 	},
+	.probe  = rtl837x_gsw_probe,
+	.remove = rtl837x_gsw_remove,
+	.shutdown = rtl837x_gsw_shutdown,
 };
-
-module_platform_driver(gsw_driver);
+mdio_module_driver(rtl837x_mdio_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("StarField Xu <air_jinkela@163.com>");
