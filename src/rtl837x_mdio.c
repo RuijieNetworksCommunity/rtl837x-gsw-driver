@@ -9,15 +9,15 @@
 #include <linux/version.h>
 #include <linux/device.h>
 #include <linux/delay.h>
-#include <linux/of_mdio.h>
 #include <linux/of_platform.h>
 #include <linux/of_gpio.h>
 #include <linux/of_net.h>
 #include <linux/gpio/consumer.h>
-#include <linux/switch.h>
 #include <linux/mutex.h>
+#include <linux/jiffies.h>
 #include <linux/platform_device.h>
-#include <linux/regmap.h>
+#include <linux/errno.h>
+#include <net/rtnetlink.h>
 
 #include "./rtl837x_common.h"
 
@@ -454,6 +454,53 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 	return 0;
 }
 
+static void rtl837x_status_check_work_func(struct work_struct *work)
+{
+	struct rtk_gsw *gsw = container_of(work, struct rtk_gsw, status_check_work.work);
+
+	rtk_port_status_t port_status;
+
+	rtk_port_macStatus_get(gsw->port_map[gsw->cpu_port], &port_status);
+	if (!port_status.link)
+	{
+		dev_info(gsw->dev, "CPU Port Down, Try to reset Serdes\n");
+
+		rtnl_lock();
+		dev_close(gsw->ethernet_master);
+		rtnl_unlock();
+
+		udelay(100);
+
+		rtnl_lock();
+		dev_open(gsw->ethernet_master, NULL);
+		rtnl_unlock();
+
+		rtk_sdsMode_set(0, SERDES_OFF);
+		// rtk_sdsMode_set(1, SERDES_OFF);
+		udelay(200);
+		rtk_sdsMode_set(0, gsw->sds0mode);
+		// rtk_sdsMode_set(1, gsw->sds1mode);
+	}
+
+	queue_delayed_work_on(smp_processor_id(), 
+						system_wq, 
+						&gsw->status_check_work, 
+						msecs_to_jiffies(gsw->default_work_delay_ms)
+					);
+}
+
+static const int rtl837x_status_check_work_init(struct rtk_gsw *gsw)
+{
+	gsw->default_work_delay_ms = 250;
+	INIT_DELAYED_WORK(&gsw->status_check_work, rtl837x_status_check_work_func);
+	queue_delayed_work_on(smp_processor_id(), 
+						system_wq, 
+						&gsw->status_check_work, 
+						msecs_to_jiffies(gsw->default_work_delay_ms)
+					);
+	return 0;
+}
+
 // below are platform driver
 static const struct of_device_id rtk_gsw_match[] = {
 	{ .compatible = "realtek,rtl837x" },
@@ -469,6 +516,8 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	struct device_node *mdio;
 	struct mii_bus *mdio_bus;
 	struct rtk_gsw *gsw;
+	struct device_node *ethernet;
+	struct net_device *master;
 	const char *sdsmode_name;
 	rtk_sds_mode_t sdsmode;
 	struct regmap_config rc;
@@ -483,6 +532,15 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 
 	mdio_bus = of_mdio_find_bus(mdio);
 	if (!mdio_bus)
+		return -EPROBE_DEFER;
+
+	ethernet = of_parse_phandle(np, "ethernet", 0);
+	if (!ethernet) 
+		return -EINVAL;
+
+	master = of_find_net_device_by_node(ethernet);
+	of_node_put(ethernet);
+	if (!master)
 		return -EPROBE_DEFER;
 
 	gsw = devm_kzalloc(dev, sizeof(struct rtk_gsw), GFP_KERNEL);
@@ -510,6 +568,7 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 
 	gsw->dev = dev;
 	gsw->bus = mdio_bus;
+	gsw->ethernet_master = master;
 	gsw->reset_func = init_rtl837x_gsw;
 	gsw->sds0mode = SERDES_OFF;
 	gsw->sds1mode = SERDES_OFF;
@@ -571,12 +630,14 @@ static int rtl837x_gsw_probe(struct platform_device *pdev)
 	}
 
 	rtl837x_debug_proc_init();
+	rtl837x_status_check_work_init(gsw);
 	return 0;
 }
 
 static void _rtl837x_gsw_remove(struct platform_device *pdev)
 {
 	struct rtk_gsw *gsw = platform_get_drvdata(pdev);
+	cancel_delayed_work_sync(&gsw->status_check_work);
 	unregister_switch(&gsw->sw_dev);
 	rtl837x_debug_proc_deinit();
 	platform_set_drvdata(pdev, NULL);

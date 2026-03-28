@@ -9,6 +9,7 @@
 #include <linux/switch.h>
 #include <linux/of_mdio.h>
 #include <linux/regmap.h>
+#include <linux/workqueue.h>
 
 #include "./rtk-api/rtk_error.h"
 #include "./rtk-api/rtk_types.h"
@@ -57,6 +58,7 @@ struct rtk_gsw {
 
 	struct switch_dev sw_dev;
 	unsigned int cpu_port;
+	struct net_device *ethernet_master;
 
 	struct rtl837x_mib_counter *mib_counters;
 	unsigned int num_mib_counters;
@@ -76,6 +78,9 @@ struct rtk_gsw {
 	bool global_vlan_enable;
 
 	int (*reset_func)(struct rtk_gsw *gsw);
+
+	int default_work_delay_ms;
+	struct delayed_work status_check_work;
 };
 
 extern int rtl837x_debug_proc_init(void);
