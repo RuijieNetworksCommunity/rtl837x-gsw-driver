@@ -295,10 +295,10 @@ static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, str
 		dev_err(gsw->dev, "Invalid Port: %u", port);
 		return -EINVAL;
 	}
-	
+
 	// 获取物理端口号
 	rtk_uint32 phy_port = gsw->port_map[port];
-	
+
 	// 获取MAC状态信息
 	rtk_port_status_t port_status;
 	ret = rtk_port_macStatus_get(phy_port, &port_status);
@@ -309,15 +309,11 @@ static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, str
 				port, ret);
 		return -EINVAL;
 	}
-	
+
 	// 获取自动协商状态（特殊端口除外）
-	bool auto_neg_enabled = 1;
-	
-	// 特殊端口：管理端口或端口5
-	const bool is_special_port = (port == gsw->cpu_port) || (port == 5);
-	
-	if (!is_special_port) {
-		rtk_uint32 auto_neg_value;
+	rtk_uint32 auto_neg_value;
+
+	if (!((phy_port == 3) || (phy_port == 8))) {
 		ret = rtk_phy_common_c45_autoNegoEnable_get(phy_port, &auto_neg_value);
 		if (ret != RT_ERR_OK) {
 			dev_err(gsw->dev, 
@@ -325,14 +321,13 @@ static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, str
 					port, auto_neg_value);
 			return -EIO;
 		}
-		auto_neg_enabled = (auto_neg_value != 0);
 	}
-	
+
 	// 解析并填充链路状态
 	struct switch_port_link result = {
 		.link = (port_status.link != 0),
 		.duplex = (port_status.duplex != 0),
-		.aneg = auto_neg_enabled,
+		.aneg = (auto_neg_value != 0),
 		.tx_flow = (port_status.txpause != 0),
 		.rx_flow = (port_status.rxpause != 0),
 		.speed = convert_speed_code(port_status.speed)
@@ -427,12 +422,16 @@ static int rtl837x_sw_get_port_mib(struct switch_dev *dev, const struct switch_a
 	return 0;
 }
 
-static int rtl837x_sw_reset_sds0mode(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+static int rtl837x_sw_reset_sdsx(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
 	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
-	ret_t ret;
-	ret = rtk_sdsMode_set(0, gsw->sds0mode);
-	if (ret)
+	if (val->value.i != 0 && val->value.i != 1)
+		return -EINVAL;
+
+	if (rtk_sdsMode_set(val->value.i, SERDES_OFF))
+		return -EPERM;
+
+	if (rtk_sdsMode_set(val->value.i, gsw->sds1mode))
 		return -EPERM;
 	return 0;
 }
@@ -457,10 +456,10 @@ static struct switch_attr rtl832n_globals[] = {
 		.set = rtl837x_sw_set_flowcontrol_ports,
 		.get = rtl837x_sw_get_flowcontrol_ports,
 	}, {
-		.type = SWITCH_TYPE_NOVAL,
-		.name = "reset_serdes0",
-		.description = "Reset Serdes 0",
-		.set = rtl837x_sw_reset_sds0mode,
+		.type = SWITCH_TYPE_INT,
+		.name = "reset_serdes",
+		.description = "Reset Serdes",
+		.set = rtl837x_sw_reset_sdsx,
 	}
 };
 
