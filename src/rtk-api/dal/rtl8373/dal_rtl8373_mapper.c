@@ -79,8 +79,8 @@ static dal_mapper_t dal_rtl8373_mapper =
     .fMdrv_miim_mmd_writebits = dal_rtl8373_phy_writeBits,
 
     .fw_reset_flow_tgr_tgx = fw_reset_flow_tgr_tgx,
-    //.fw_reset_flow_tgr = fw_reset_flow_tgr,
-    //.fw_reset_flow_tgx = fw_reset_flow_tgx,
+    .fw_reset_flow_tgr = fw_reset_flow_tgr,
+    .fw_reset_flow_tgx = fw_reset_flow_tgx,
     .fw_reset_flow_tgr_8224 = fw_reset_flow_tgr_8224,
     .fw_reset_flow_8221B = dal_rtl8373_fw_reset_flow_8221B,
     .rtl8224_top_reg_write = dal_rtl8224_top_reg_write,

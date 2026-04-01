@@ -348,7 +348,19 @@ static int rtl8372n_igmp_init(struct rtk_gsw *gsw)
 	return rtk_igmp_suppressionEnable_set(TRUE, TRUE);
 }
 
-static int rtl8372n_hw_init(struct rtk_gsw *gsw)
+typedef struct rtl837x_pnswap_cfg_s {
+	uint8_t sds0_rx_swap:1;
+	uint8_t sds0_tx_swap:1;
+
+	uint8_t sds1_rx_swap:1;
+	uint8_t sds1_tx_swap:1;
+
+	uint8_t phy_mdi_reverse:1;
+	uint8_t phy_tx_polarity_swap:1;
+	uint8_t RESERVED:2;
+} rtl837x_pnswap_cfg_t;
+
+static int rtl8372n_hw_init(struct rtk_gsw *gsw, rtl837x_pnswap_cfg_t swap_cfg)
 {
 
 	unsigned int ret;
@@ -358,6 +370,44 @@ static int rtl8372n_hw_init(struct rtk_gsw *gsw)
 		dev_err(gsw->dev, "rtl837x_switch_probe Fail, error:%d\n", ret);
 		return -EPERM;
 	}
+
+	// Sx PN swap:
+    // 	RX:
+    // 		page0 reg0 bit9:1
+    // 		page6 reg2 bit13:1
+    // 	TX:
+    // 		page0 reg0 bit8:1
+    // 		page6 reg2 bit14:1
+	if (swap_cfg.sds0_rx_swap)
+	{
+		gsw->pMapper->rtl8373_sds_regbits_write(0, 0, 0, 0x200, 1); //#SDS0RX PN swap
+		gsw->pMapper->rtl8373_sds_regbits_write(0, 6, 2, 0x2000, 1);
+	}
+
+	if (swap_cfg.sds0_tx_swap)
+	{
+		gsw->pMapper->rtl8373_sds_regbits_write(0, 0, 0, 1 << 8, 1); //#SDS0RTX PN swap
+		gsw->pMapper->rtl8373_sds_regbits_write(0, 6, 2, 1 << 14, 1);
+	}
+
+	if (swap_cfg.sds1_rx_swap)
+	{
+		gsw->pMapper->rtl8373_sds_regbits_write(1, 0, 0, 0x200, 1); //#SDS1RX PN swap
+		gsw->pMapper->rtl8373_sds_regbits_write(1, 6, 2, 0x2000, 1);
+	}
+
+	if (swap_cfg.sds1_tx_swap)
+	{
+		gsw->pMapper->rtl8373_sds_regbits_write(1, 0, 0, 1 << 8, 1); //#SDS1TX PN swap
+		gsw->pMapper->rtl8373_sds_regbits_write(1, 6, 2, 1 << 14, 1);
+	}
+
+    // ##MDI reverse configuration for Demo Tap UP RJ45, RTL8366U/RTL8373N/RTL8372N
+	if (swap_cfg.phy_mdi_reverse)
+		gsw->pMapper->rtl8373_setAsicRegBits(RTL8373_CFG_PHY_MDI_REVERSE_ADDR, 0xF, 0xC);
+
+	if (swap_cfg.phy_tx_polarity_swap)
+    	gsw->pMapper->rtl8373_setAsicRegBits(RTL8373_CFG_PHY_TX_POLARITY_SWAP_ADDR, 0xFFFF, 0x596A); //#TX_POLARITY_SWAP
 
 	ret = rtk_switch_init();
 	if(ret){
@@ -679,16 +729,33 @@ static int rtl837x_gsw_probe(struct mdio_device *mdiodev)
 			!rtl837x_sdsmode(sdsmode_name, &sdsmode))
 		gsw->sds1mode = sdsmode;
 
+	rtl837x_pnswap_cfg_t swap_cfg;
+	memset(&swap_cfg,0,sizeof(rtl837x_pnswap_cfg_t));
+	if (of_property_read_bool(np, "sds0-rx-swap"))
+		swap_cfg.sds0_rx_swap = 1;
+	if (of_property_read_bool(np, "sds0-tx-swap"))
+		swap_cfg.sds0_tx_swap = 1;
+	if (of_property_read_bool(np, "sds1-rx-swap"))
+		swap_cfg.sds1_rx_swap = 1;
+	if (of_property_read_bool(np, "sds1-tx-swap"))
+		swap_cfg.sds1_tx_swap = 1;
+
+	if (of_property_read_bool(np, "phy-mdi-reverse"))
+		swap_cfg.phy_mdi_reverse = 1;
+	if (of_property_read_bool(np, "phy-tx-polarity-swap"))
+		swap_cfg.phy_tx_polarity_swap = 1;
+
 	gsw->mdio_addr = mdiodev->addr;
 	gsw->mib_counters = rtl837x_mib_counters;
 	gsw->num_mib_counters = ARRAY_SIZE(rtl837x_mib_counters);
 
-	dev_info(gsw->dev, "rtl837x dev info:smi-addr:%d\tcpu_port:%d\tserdes-mode:%d\n", gsw->mdio_addr, gsw->cpu_port, gsw->sds0mode);
+	dev_info(gsw->dev, "rtl837x dev info:smi-addr:%d cpu_port:%d serdes-mode:%d swap_cfg:0x%x\n",
+						 gsw->mdio_addr, gsw->cpu_port, gsw->sds0mode, *(uint8_t*)&swap_cfg);
 
 	dev_set_drvdata(dev, gsw);
 	gsw_regmap = gsw->map;
 
-	ret = rtl8372n_hw_init(gsw);
+	ret = rtl8372n_hw_init(gsw, swap_cfg);
 	if (ret)
 	{
 		dev_err(gsw->dev, "rtl8372n_hw_init failed, ret=%d\n",ret);

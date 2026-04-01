@@ -77,8 +77,8 @@ typedef struct dal_mapper_s {
     rtk_api_ret_t   (*fMdrv_miim_mmd_writebits)(rtk_uint32 , rtk_uint32 , rtk_uint32 , rtk_uint32 ,rtk_uint32);
 
     rtk_api_ret_t  (*fw_reset_flow_tgr_tgx)(rtk_uint32);
-    //rtk_api_ret_t  (*fw_reset_flow_tgr)(rtk_uint32);
-    //rtk_api_ret_t  (*fw_reset_flow_tgx)(rtk_uint32);
+    rtk_api_ret_t  (*fw_reset_flow_tgr)(rtk_uint32);
+    rtk_api_ret_t  (*fw_reset_flow_tgx)(rtk_uint32);
     rtk_api_ret_t  (*fw_reset_flow_tgr_8224)(rtk_uint32);
     rtk_api_ret_t  (*fw_reset_flow_8221B)(rtk_uint32);
     rtk_api_ret_t  (*rtl8224_top_reg_write)(rtk_uint32,  rtk_uint32);
