@@ -62,8 +62,9 @@ rtk_api_ret_t dal_rtl8373_gpio_muxSel_set(rtk_uint32 gpioNum)
     }
     else if (gpioNum == 31 || gpioNum == 32)
     {
-        val = gpioNum - 30;
-        if((retVal = rtl8373_setAsicRegBits(RTL8373_IO_MUX_SEL_1_ADDR, (RTL8373_IO_MUX_SEL_1_PAD_UART0_SEL_0_MASK | RTL8373_IO_MUX_SEL_1_PAD_UART0_SEL_1_MASK), val)) != RT_ERR_OK)
+        // we have to set RTL8373_IO_MUX_SEL_1_PAD_UART0_SEL_0_MASK and RTL8373_IO_MUX_SEL_1_PAD_UART0_SEL_1_MASK
+        // only set RTL8373_IO_MUX_SEL_1_PAD_UART0_SEL_0_MASK or RTL8373_IO_MUX_SEL_1_PAD_UART0_SEL_1_MASK is not work
+        if((retVal = rtl8373_setAsicRegBits(RTL8373_IO_MUX_SEL_1_ADDR, RTL8373_IO_MUX_SEL_1_PAD_UART0_SEL_0_MASK | RTL8373_IO_MUX_SEL_1_PAD_UART0_SEL_1_MASK, 0x3)) != RT_ERR_OK)
             return retVal;
     }
     else if (gpioNum >= 33 && gpioNum <= 35 )
