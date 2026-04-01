@@ -35,6 +35,30 @@ static int rtl837x_sw_get_port_stats(struct switch_dev *dev, int port,struct swi
 	return 0;
 }
 
+static rtk_api_ret_t _phy_on(rtk_uint32 port)
+{	
+	rtk_api_ret_t ret;
+	rtk_uint32 data;
+	//READ, PHY_MMD_PCS (3) -> PCS control 1 (0)
+	ret = rtk_port_phyReg_get(port, PHY_MMD_PCS, 0, &data);
+	if (ret == RT_ERR_OK)
+		data &= 0xFFFFF7FF; // Low power (BIT11)
+	ret = rtk_port_phyReg_set(1 << port, PHY_MMD_PCS, 0, data);
+	return ret;
+}
+
+static rtk_api_ret_t _phy_off(rtk_uint32 port)
+{	
+	rtk_api_ret_t ret;
+	rtk_uint32 data;
+	//READ, PHY_MMD_PCS (3) -> PCS control 1 (0)
+	ret = rtk_port_phyReg_get(port, PHY_MMD_PCS, 0, &data);
+	if (ret == RT_ERR_OK)
+		data |= 0x800; // Low power (BIT11)
+	ret = rtk_port_phyReg_set(1 << port, PHY_MMD_PCS, 0, data);
+	return ret;
+}
+
 /**
  * @brief 应用交换机配置
  * 
@@ -73,7 +97,9 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
 				ana.AsyFC = 1;
 			}
 			// 设置端口自动协商能力
+			_phy_off(gsw->port_map[port]);
 			ret = rtk_phy_common_c45_autoSpeed_set(gsw->port_map[port], &ana);
+			_phy_on(gsw->port_map[port]);
 			if (ret) {
 				dev_err(gsw->dev, "Port %d autoNegoAbility configure Failed: %d", port, ret);
 				return -EIO;
@@ -388,7 +414,7 @@ static int rtl837x_sw_reset_port_mibs(struct switch_dev *dev,const struct switch
 	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
 	port = val->port_vlan;
-	if (port >= 9) return -EINVAL;
+	if (port >= gsw->num_ports) return -EINVAL;
 
 	rtk_stat_port_reset(gsw->port_map[port]);
 
