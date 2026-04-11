@@ -30,8 +30,8 @@ static int rtl837x_sw_get_port_stats(struct switch_dev *dev, int port,struct swi
 {
 	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
 
-	rtk_stat_port_get(gsw->port_map[port], 0, &(stats->tx_bytes));             // tx_bytes
-	rtk_stat_port_get(gsw->port_map[port], 2u, &(stats->rx_bytes));                // rx_bytes
+	rtk_stat_port_get(PORT_MAPPED(port), 0, &(stats->tx_bytes));             // tx_bytes
+	rtk_stat_port_get(PORT_MAPPED(port), 2u, &(stats->rx_bytes));                // rx_bytes
 	return 0;
 }
 
@@ -97,9 +97,9 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
 				ana.AsyFC = 1;
 			}
 			// 设置端口自动协商能力
-			_phy_off(gsw->port_map[port]);
-			ret = rtk_phy_common_c45_autoSpeed_set(gsw->port_map[port], &ana);
-			_phy_on(gsw->port_map[port]);
+			_phy_off(PORT_MAPPED(port));
+			ret = rtk_phy_common_c45_autoSpeed_set(PORT_MAPPED(port), &ana);
+			_phy_on(PORT_MAPPED(port));
 			if (ret) {
 				dev_err(gsw->dev, "Port %d autoNegoAbility configure Failed: %d", port, ret);
 				return -EIO;
@@ -138,7 +138,7 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
 		// ====================== 3. 应用PVID配置 ======================
 		for (int port = 0; port < swdev->ports; port++) {
 			ret = rtk_vlan_portPvid_set(
-				gsw->port_map[port], 
+				PORT_MAPPED(port), 
 				gsw->port_pvid[port]
 			);
 			
@@ -152,20 +152,18 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
 	else
 	{
 		// 获取CPU端口的物理端口号
-		rtk_uint32 cpu_phy_port = gsw->port_map[swdev->cpu_port];
 		rtk_uint32 isolation_map = 0;
 		
 		// 构建隔离映射
 		for (int port = 0; port < swdev->ports; port++) {
 			// 跳过CPU端口
 			if (port != swdev->cpu_port) {
-				uint8_t phy_port = gsw->port_map[port];
 				
 				// 添加端口到隔离映射
-				isolation_map |= (1 << phy_port);
+				isolation_map |= (1 << PORT_MAPPED(port));
 				
 				// 设置端口隔离
-				ret = rtk_port_isolation_set(phy_port, (1 << cpu_phy_port));
+				ret = rtk_port_isolation_set(PORT_MAPPED(port), (1 << PORT_MAPPED(swdev->cpu_port)));
 				if (ret) {
 					dev_err(gsw->dev, "Port %d isolation configure Failed: %d", port, ret);
 					return -EIO;
@@ -174,7 +172,7 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
 		}
 		
 		// 设置CPU端口的隔离
-		ret = rtk_port_isolation_set(cpu_phy_port, isolation_map);
+		ret = rtk_port_isolation_set(PORT_MAPPED(swdev->cpu_port), isolation_map);
 		if (ret) {
 			dev_err(gsw->dev, "CPU port isolation configure Failed: %d", ret);
 			return -EIO;
@@ -195,10 +193,10 @@ static int rtl837x_sw_get_vlan_ports(struct switch_dev *dev, struct switch_val *
 
 	struct switch_port *port = &val->value.ports[0];
 	for(int i = 0;i < gsw->num_ports;i++){
-		if (!(vlan_cfg.mbr.bits[0] & BIT(gsw->port_map[i]))) continue;
+		if (!(vlan_cfg.mbr.bits[0] & BIT(PORT_MAPPED(i)))) continue;
 
 		port->id = i;
-		port->flags = (vlan_cfg.untag.bits[0] & BIT(gsw->port_map[i])) ? 0 : BIT(SWITCH_PORT_FLAG_TAGGED);
+		port->flags = (vlan_cfg.untag.bits[0] & BIT(PORT_MAPPED(i))) ? 0 : BIT(SWITCH_PORT_FLAG_TAGGED);
 		val->len++;
 		port++;
 	}
@@ -239,11 +237,8 @@ static int rtl837x_sw_set_vlan_ports(struct switch_dev *dev, struct switch_val *
 			// 获取物理端口号
 			rtk_uint32 physical_port = port_list[i].id;
 			
-			// 获取逻辑端口索引
-			rtk_uint32 logical_port = gsw->port_map[physical_port];
-			
 			// 计算端口位掩码
-			rtk_uint32 port_mask = BIT(logical_port);
+			rtk_uint32 port_mask = BIT(PORT_MAPPED(physical_port));
 			
 			// 添加到所有端口位图
 			vlan_mbr |= port_mask;
@@ -272,7 +267,7 @@ static int rtl837x_sw_get_port_pvid(struct switch_dev *dev, int port, int *val)
 
 	if (port > gsw->num_ports) return -EINVAL;
 
-	result = rtk_vlan_portPvid_get(gsw->port_map[port], val);
+	result = rtk_vlan_portPvid_get(PORT_MAPPED(port), val);
 	if ( result )
 	{
 		dev_err(gsw->dev, "%s: rtk_vlan_portPvid_get failed, ret=%d\n", "rtl837x_get_port_pvid", result);
@@ -322,12 +317,9 @@ static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, str
 		return -EINVAL;
 	}
 
-	// 获取物理端口号
-	rtk_uint32 phy_port = gsw->port_map[port];
-
 	// 获取MAC状态信息
 	rtk_port_status_t port_status;
-	ret = rtk_port_macStatus_get(phy_port, &port_status);
+	ret = rtk_port_macStatus_get(PORT_MAPPED(port), &port_status);
 	if(ret)
 	{
 		dev_err(gsw->dev, 
@@ -339,8 +331,8 @@ static int rtl837x_sw_get_port_link_status(struct switch_dev *dev, int port, str
 	// 获取自动协商状态（特殊端口除外）
 	rtk_uint32 auto_neg_value;
 
-	if (!((phy_port == 3) || (phy_port == 8))) {
-		ret = rtk_phy_common_c45_autoNegoEnable_get(phy_port, &auto_neg_value);
+	if (!((PORT_MAPPED(port) == 3) || (PORT_MAPPED(port) == 8))) {
+		ret = rtk_phy_common_c45_autoNegoEnable_get(PORT_MAPPED(port), &auto_neg_value);
 		if (ret != RT_ERR_OK) {
 			dev_err(gsw->dev, 
 					"get port:%u autoNegoAbility status Failed: %d", 
@@ -416,7 +408,7 @@ static int rtl837x_sw_reset_port_mibs(struct switch_dev *dev,const struct switch
 	port = val->port_vlan;
 	if (port >= gsw->num_ports) return -EINVAL;
 
-	rtk_stat_port_reset(gsw->port_map[port]);
+	rtk_stat_port_reset(PORT_MAPPED(port));
 
 	return 0;
 }

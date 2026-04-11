@@ -335,7 +335,7 @@ static int rtl8372n_igmp_init(struct rtk_gsw *gsw)
 	if(gsw->num_ports > 0)
 	{
 		for(int port = 0;port < gsw->num_ports;port++){
-			rtk_uint32 phy_port = gsw->port_map[port];
+			rtk_uint32 phy_port = PORT_MAPPED(port);
 			ret = rtk_igmp_maxGroup_set(phy_port, 255);
 			if (ret)
 			{
@@ -460,8 +460,7 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 	}
 
 	for(int port = 0;port < gsw->num_ports;port++){
-		rtk_uint32 phy_port = gsw->port_map[port];
-		ret = rtk_eee_portTxRxEn_set(phy_port, 0u, 0u);
+		ret = rtk_eee_portTxRxEn_set(PORT_MAPPED(port), 0u, 0u);
 		if (ret)
 		{
 			dev_err(gsw->dev, "rtk_eee_portTxRxEn_set failed, error:%d\n",ret);
@@ -477,7 +476,7 @@ static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
 	if (ret)
 		return -EPERM;
 
-	ret = rtk_cpu_externalCpuPort_set(gsw->port_map[gsw->cpu_port]);
+	ret = rtk_cpu_externalCpuPort_set(PORT_MAPPED(gsw->cpu_port));
 	if (ret)
 	{
 		dev_err(gsw->dev, "rtk_cpu_externalCpuPort_set failed, error:%d\n",ret);
@@ -507,7 +506,7 @@ static void rtl837x_status_check_work_func(struct work_struct *work)
 
 	rtk_port_status_t port_status;
 
-	rtk_port_macStatus_get(gsw->port_map[gsw->cpu_port], &port_status);
+	rtk_port_macStatus_get(PORT_MAPPED(gsw->cpu_port), &port_status);
 	if (!port_status.link)
 	{
 		dev_info(gsw->dev, "CPU Port Down, Try to reset Serdes\n");

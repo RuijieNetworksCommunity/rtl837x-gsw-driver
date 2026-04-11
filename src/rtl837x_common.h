@@ -30,6 +30,8 @@
 #include "./rtk-api/dal/dal_mapper.h"
 #include "./rtk-api/dal/rtl8373/dal_rtl8373_mapper.h"
 
+#define PORT_MAPPED(portx) (gsw->port_map[portx])
+
 struct rtl837x_mib_counter {
 	uint16_t	base;
 	const char	*name;
