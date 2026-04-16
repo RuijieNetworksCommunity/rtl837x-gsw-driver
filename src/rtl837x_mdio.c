@@ -280,11 +280,11 @@ static int rtl837x_hw_reset(struct rtk_gsw *gsw)
 	if (!IS_ERR(gsw->reset_pin)) {
 		dev_info(gsw->dev, "START HW RESET");
 		gpiod_set_value(gsw->reset_pin, 1);
-		mdelay(50);
+		mdelay(100);
 		gpiod_set_value(gsw->reset_pin, 0);
-		mdelay(50);
+		mdelay(100);
 		gpiod_set_value(gsw->reset_pin, 1);
-		mdelay(50);
+		mdelay(100);
 		dev_info(gsw->dev, "FINISH HW RESET");
 	}
 
@@ -435,13 +435,6 @@ static int rtl8372n_hw_init(struct rtk_gsw *gsw, rtl837x_pnswap_cfg_t swap_cfg)
 		dev_err(gsw->dev, "rtl8372n_igmp_init failed, error:%d\n", ret);
 		return -EPERM;
 	}
-
-	return 0;
-}
-
-static ret_t init_rtl837x_gsw(struct rtk_gsw *gsw)
-{
-	ret_t ret;
 
 	rtk_rmaParam_t pRmacfg;
 	ret = rtk_rma_get(2, &pRmacfg);
@@ -708,7 +701,6 @@ static int rtl837x_gsw_probe(struct mdio_device *mdiodev)
 	gsw->dev = dev;
 	gsw->bus = mdiodev->bus;
 	gsw->ethernet_master = master;
-	gsw->reset_func = init_rtl837x_gsw;
 	gsw->sds0mode = SERDES_OFF;
 	gsw->sds1mode = SERDES_OFF;
 
@@ -763,13 +755,6 @@ static int rtl837x_gsw_probe(struct mdio_device *mdiodev)
 		dev_err(gsw->dev, "rtl8372n_hw_init failed, ret=%d\n",ret);
 		devm_kfree(dev, gsw);
 		return -ENODEV;
-	}
-
-	ret = init_rtl837x_gsw(gsw);
-	if (ret){
-		dev_err(gsw->dev, "init_rtl837x_gsw failed, ret=%d\n", ret);
-		devm_kfree(dev, gsw);
-		return ret;
 	}
 
 	ret = rtl837x_swconfig_init(gsw);

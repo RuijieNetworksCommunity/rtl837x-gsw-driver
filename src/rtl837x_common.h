@@ -86,8 +86,6 @@ struct rtk_gsw {
 	uint16_t flow_control_map; // 流控配置位图
 	bool global_vlan_enable;
 
-	int (*reset_func)(struct rtk_gsw *gsw);
-
 	int default_work_delay_ms;
 	struct delayed_work status_check_work;
 };
