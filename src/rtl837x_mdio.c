@@ -515,23 +515,20 @@ static void rtl837x_status_check_work_func(struct work_struct *work)
 			return;
 		}
 
-		dev_info(gsw->dev, "CPU Port Down, Try to reset Serdes\n");
+		dev_info(gsw->dev, "CPU Port Down, Try to reset Serdes, mode: 0x%x\n", gsw->sds0mode);
 
 		rtnl_lock();
 		dev_close(gsw->ethernet_master);
 		rtnl_unlock();
-
-		udelay(100);
+		rtk_sdsMode_set(0, SERDES_OFF);
+		mdelay(200);
 
 		rtnl_lock();
 		dev_open(gsw->ethernet_master, NULL);
 		rtnl_unlock();
-
-		rtk_sdsMode_set(0, SERDES_OFF);
-		// rtk_sdsMode_set(1, SERDES_OFF);
-		udelay(200);
 		rtk_sdsMode_set(0, gsw->sds0mode);
-		// rtk_sdsMode_set(1, gsw->sds1mode);
+
+		mdelay(2000);
 	}
 
 	queue_delayed_work_on(smp_processor_id(), 
@@ -644,7 +641,7 @@ static const int rtl837x_sfp_probe(struct rtk_gsw *gsw)
 
 static const int rtl837x_status_check_work_init(struct rtk_gsw *gsw)
 {
-	gsw->default_work_delay_ms = 750;
+	gsw->default_work_delay_ms = 1000;
 	INIT_DELAYED_WORK(&gsw->status_check_work, rtl837x_status_check_work_func);
 	queue_delayed_work_on(smp_processor_id(), 
 						system_wq, 

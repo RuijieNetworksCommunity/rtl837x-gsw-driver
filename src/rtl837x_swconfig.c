@@ -465,11 +465,17 @@ static int rtl837x_sw_reset_sdsx(struct switch_dev *dev, const struct switch_att
 	if (val->value.i != 0 && val->value.i != 1)
 		return -EINVAL;
 
+	rtk_sds_mode_t mode = (val->value.i != 0) ? gsw->sds1mode : gsw->sds0mode;
+	dev_info(gsw->dev, "Reset Serdes%d, mode: %x\n", val->value.i, mode);
+
 	if (rtk_sdsMode_set(val->value.i, SERDES_OFF))
 		return -EPERM;
+	mdelay(20);
 
-	if (rtk_sdsMode_set(val->value.i, gsw->sds1mode))
+	if (rtk_sdsMode_set(val->value.i, mode))
 		return -EPERM;
+	mdelay(20);
+
 	return 0;
 }
 
@@ -487,7 +493,7 @@ static struct switch_attr rtl832n_globals[] = {
 		.description = "Reset all MIB counters",
 		.set = rtl837x_sw_reset_mibs,
 	}, {
-		.type = SWITCH_TYPE_NOVAL,
+		.type = SWITCH_TYPE_INT,
 		.name = "reset_serdes",
 		.description = "Reset Serdes",
 		.set = rtl837x_sw_reset_sdsx,
