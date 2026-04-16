@@ -509,6 +509,12 @@ static void rtl837x_status_check_work_func(struct work_struct *work)
 	rtk_port_macStatus_get(PORT_MAPPED(gsw->cpu_port), &port_status);
 	if (!port_status.link)
 	{
+		if (PORT_MAPPED(gsw->cpu_port) != UTP_PORT3 && PORT_MAPPED(gsw->cpu_port) != UTP_PORT8)
+		{
+			dev_warn(gsw->dev, "CPU Port Down, But the CPU port is not Serdes Port, Skip Reset and stop CPU port check work\n");
+			return;
+		}
+
 		dev_info(gsw->dev, "CPU Port Down, Try to reset Serdes\n");
 
 		rtnl_lock();

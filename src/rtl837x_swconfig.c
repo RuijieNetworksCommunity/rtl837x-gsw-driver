@@ -77,7 +77,8 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
 	dev_info(gsw->dev, "rtl837x Apply flow control\n");
 	for (int port = 0; port < gsw->num_ports; port++) {
 		// 跳过CPU端口和特定端口
-		if (port != 0 && port != swdev->cpu_port && port != 5) {
+		rtk_uint32 port_mapped = PORT_MAPPED(port);
+		if (port_mapped != UTP_PORT3 && port_mapped != UTP_PORT8) {
 			rtk_port_phy_ability_t ana = {
 				.Half_10 = 1,
 				.Full_10 = 1,
@@ -91,22 +92,22 @@ static int rtl837x_sw_apply_config(struct switch_dev *swdev)
 				.FC = 0,
 				.AsyFC = 0,
 			};
-			if ((gsw->flow_control_map >> port) & 1)
+			if ((gsw->flow_control_map >> port_mapped) & 1)
 			{
 				ana.FC = 1;
 				ana.AsyFC = 1;
 			}
 			// 设置端口自动协商能力
-			_phy_off(PORT_MAPPED(port));
-			ret = rtk_phy_common_c45_autoSpeed_set(PORT_MAPPED(port), &ana);
-			_phy_on(PORT_MAPPED(port));
+			_phy_off(port_mapped);
+			ret = rtk_phy_common_c45_autoSpeed_set(port_mapped, &ana);
+			_phy_on(port_mapped);
 			if (ret) {
 				dev_err(gsw->dev, "Port %d autoNegoAbility configure Failed: %d", port, ret);
 				return -EIO;
 			}
 		}
 	}
-	
+
 	// ====================== 2. 应用VLAN配置 ======================
 	if (gsw->global_vlan_enable)
 	{
@@ -372,17 +373,35 @@ static int rtl837x_sw_set_vlan_enable(struct switch_dev *dev, const struct switc
 	return 0;
 }
 
-static int rtl837x_sw_get_flowcontrol_ports(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+static int rtl837x_sw_get_port_flowcontrol(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
+	rtk_uint32 port;
 	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
-	val->value.i = gsw->flow_control_map;
+
+	port = val->port_vlan;
+	if (port >= gsw->num_ports) return -EINVAL;
+
+	val->value.i = (gsw->flow_control_map >> PORT_MAPPED(port)) & 0x1;
 	return 0;
 }
 
-static int rtl837x_sw_set_flowcontrol_ports(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+static int rtl837x_sw_set_port_flowcontrol(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
 {
+	rtk_uint32 port;
 	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
-	gsw->flow_control_map = val->value.i;
+
+	port = val->port_vlan;
+	if (port >= gsw->num_ports) return -EINVAL;
+
+	rtk_uint32 port_mapped = PORT_MAPPED(port);
+	if (port_mapped == UTP_PORT3 ||
+		port_mapped != UTP_PORT8) return -EINVAL;
+
+	rtk_uint32 enabled = val->value.i;
+	if (enabled)
+		gsw->flow_control_map |= BIT(port_mapped);
+	else
+		gsw->flow_control_map &= ~BIT(port_mapped);
 	return 0;
 }
 
@@ -468,13 +487,7 @@ static struct switch_attr rtl832n_globals[] = {
 		.description = "Reset all MIB counters",
 		.set = rtl837x_sw_reset_mibs,
 	}, {
-		.type = SWITCH_TYPE_INT,
-		.name = "enable_flowcontrol",
-		.description = "set hw flow control of port mask (1f: all ports)",
-		.set = rtl837x_sw_set_flowcontrol_ports,
-		.get = rtl837x_sw_get_flowcontrol_ports,
-	}, {
-		.type = SWITCH_TYPE_INT,
+		.type = SWITCH_TYPE_NOVAL,
 		.name = "reset_serdes",
 		.description = "Reset Serdes",
 		.set = rtl837x_sw_reset_sdsx,
@@ -487,18 +500,26 @@ static struct switch_attr rtl837x_port[] = {
 		.name = "reset_mib",
 		.description = "Reset single port MIB counters",
 		.set = rtl837x_sw_reset_port_mibs,
-	}, {
-		.type = SWITCH_TYPE_STRING,
-		.name = "mib",
-		.description = "Get MIB counters for port",
-		.set = NULL,
-		.get = rtl837x_sw_get_port_mib,
 	},
+	{
+		.type = SWITCH_TYPE_INT,
+		.name = "flowcontrol",
+		.description = "set hw flow control",
+		.set = rtl837x_sw_set_port_flowcontrol,
+		.get = rtl837x_sw_get_port_flowcontrol,
+	},
+	// {
+	// 	.type = SWITCH_TYPE_STRING,
+	// 	.name = "mib",
+	// 	.description = "Get MIB counters for port",
+	// 	.set = NULL,
+	// 	.get = rtl837x_sw_get_port_mib,
+	// },
 };
 
 static const struct switch_dev_ops rtl8372n_sw_ops = {
 	.attr_global = { .attr = rtl832n_globals, .n_attr = ARRAY_SIZE(rtl832n_globals)},
-	// .attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
+	.attr_port = { .attr = rtl837x_port, .n_attr = ARRAY_SIZE(rtl837x_port) },
 	.attr_vlan = { .attr = NULL, .n_attr = 0 },
 
 	.get_vlan_ports = rtl837x_sw_get_vlan_ports,
@@ -534,7 +555,8 @@ int rtl837x_swconfig_init(struct rtk_gsw *gsw)
 		dev_err(gsw->dev, "switch registration failed\n");
 
 	gsw->global_vlan_enable = true; 
-	gsw->flow_control_map = 0x1f; //启用所有端口的autoNegoAbility
+	gsw->flow_control_map = 0xF0; //启用所有端口的autoNegoAbility
 
+	rtl837x_sw_apply_config(dev);
 	return err;
 }
