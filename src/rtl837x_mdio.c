@@ -672,6 +672,100 @@ static const int rtl837x_status_check_work_init(struct rtk_gsw *gsw)
 	return 0;
 }
 
+static int of_set_led(struct rtk_gsw *gsw,
+		      struct device_node *led)
+{
+	int err;
+	u32 port;
+	u32 ledid;
+	u32 setid;
+	u32 mode;
+
+	err = of_property_read_u32(led, "port", &port);
+	if (err) return err;
+	if (port > gsw->num_ports)
+		return -EINVAL;
+
+	err = of_property_read_u32(led, "setid", &setid);
+	if (err) return err;
+	if (setid > LED_SET_END)
+		return -EINVAL;
+
+	err = of_property_read_u32(led, "ledid", &ledid);
+	if (err) return err;
+	if (ledid > 4)
+		return -EINVAL;
+
+	err = of_property_read_u32(led, "mode", &mode);
+	if (err) return err;
+
+	rtk_led_config_t cfg = {0};
+
+	for(int i=0; i<32; i++)
+	{
+		uint8_t bit = (mode >> i) & 1;
+		switch (i)
+		{
+		case 0: cfg.led_10m=bit; break;
+		case 1: cfg.led_100m=bit; break;
+		case 2: cfg.led_500m=bit; break;
+		case 3: cfg.led_1g=bit; break;
+		case 4: cfg.led_2p5g=bit; break;
+		case 5: cfg.led_5g=bit; break;
+		case 6: cfg.led_10g=bit; break;
+		case 7: cfg.led_two_pair_1g=bit; break;
+		case 8: cfg.led_two_pair_2p5g=bit; break;
+		case 9: cfg.led_two_pair_5g=bit; break;
+		case 10: cfg.led_link=bit; break;
+		case 11: cfg.led_link_flash=bit; break;
+		case 12: cfg.led_act=bit; break;
+		case 13: cfg.led_rx=bit; break;
+		case 14: cfg.led_tx=bit; break;
+		case 15: cfg.led_col=bit; break;
+		case 16: cfg.led_duplex=bit; break;
+		case 17: cfg.led_training=bit; break;
+		case 18: cfg.led_master=bit; break;
+		default:break;
+		}
+	}
+
+	err = rtk_led_groupConfig_set(setid, ledid, &cfg);
+	if (err) return err;
+	err = rtk_led_portSelConfig_set(PORT_MAPPED(port), setid);
+	if (err) return err;
+	return 0;
+}
+
+static int of_parse_leds(struct rtk_gsw *gsw)
+{
+	struct device_node *node = gsw->dev->of_node;
+	struct device_node *leds, *led;
+	int err;
+
+	if (!IS_ENABLED(CONFIG_OF_MDIO))
+		return 0;
+
+	if (!node)
+		return 0;
+
+	leds = of_get_child_by_name(node, "leds");
+	if (!leds)
+		return 0;
+
+	for_each_available_child_of_node(leds, led) {
+		err = of_set_led(gsw, led);
+		if (err) {
+			of_node_put(led);
+			of_node_put(leds);
+			return err;
+		}
+	}
+
+	of_node_put(leds);
+	return 0;
+}
+
+
 // below are platform driver
 static const struct of_device_id rtk_gsw_match[] = {
 	{ .compatible = "realtek,rtl837x" },
@@ -798,6 +892,8 @@ static int rtl837x_gsw_probe(struct mdio_device *mdiodev)
 #endif /* CONFIG_GPIOLIB */
 
 	rtl837x_sfp_probe(gsw);
+
+	of_parse_leds(gsw);
 
 	rtl837x_debug_proc_init();
 	rtl837x_status_check_work_init(gsw);
