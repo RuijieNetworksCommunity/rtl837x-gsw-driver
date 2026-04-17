@@ -448,7 +448,7 @@ static int rtl837x_sw_get_port_mib(struct switch_dev *dev, const struct switch_a
 	for (i = 0; i < gsw->num_mib_counters; ++i) {
 		len += snprintf(buf + len, sizeof(gsw->buf) - len, "%-36s: ", gsw->mib_counters[i].name);
 
-		if (!rtk_stat_port_get(val->port_vlan, gsw->mib_counters[i].base, &counter))
+		if (!rtk_stat_port_get(PORT_MAPPED(val->port_vlan), gsw->mib_counters[i].base, &counter))
 			len += snprintf(buf + len, sizeof(gsw->buf) - len, "%llu\n", counter);
 		else
 			len += snprintf(buf + len, sizeof(gsw->buf) - len, "%s\n", "error");
@@ -514,13 +514,15 @@ static struct switch_attr rtl837x_port[] = {
 		.set = rtl837x_sw_set_port_flowcontrol,
 		.get = rtl837x_sw_get_port_flowcontrol,
 	},
-	// {
-	// 	.type = SWITCH_TYPE_STRING,
-	// 	.name = "mib",
-	// 	.description = "Get MIB counters for port",
-	// 	.set = NULL,
-	// 	.get = rtl837x_sw_get_port_mib,
-	// },
+#ifdef CONFIG_RTL837x_GSW_PORT_MIB_FEATURE
+	{
+		.type = SWITCH_TYPE_STRING,
+		.name = "mib",
+		.description = "Get MIB counters for port",
+		.set = NULL,
+		.get = rtl837x_sw_get_port_mib,
+	},
+#endif
 };
 
 static const struct switch_dev_ops rtl8372n_sw_ops = {

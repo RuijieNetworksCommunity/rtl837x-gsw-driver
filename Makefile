@@ -17,21 +17,14 @@ define KernelPackage/$(PKG_NAME)
 endef
 
 EXTRA_KCONFIG:= \
-	CONFIG_RTL837x_GSW=m
-
-EXTRA_CFLAGS:= \
-	$(patsubst CONFIG_%, -DCONFIG_%=1, $(patsubst %=m,%,$(filter %=m,$(EXTRA_KCONFIG)))) \
-	$(patsubst CONFIG_%, -DCONFIG_%=1, $(patsubst %=y,%,$(filter %=y,$(EXTRA_KCONFIG)))) \
-	-DVERSION=$(PKG_RELEASE) \
-	-I$(PKG_BUILD_DIR)/include
-
-MAKE_OPTS:=$(KERNEL_MAKE_FLAGS) \
-	M="$(PKG_BUILD_DIR)" \
-	EXTRA_CFLAGS="$(EXTRA_CFLAGS)" \
-	$(EXTRA_KCONFIG)
+	CONFIG_RTL837x_GSW=m \
+	CONFIG_RTL837x_GSW_PORT_MIB_FEATURE=y
 
 define Build/Compile
-	$(MAKE) -C "$(LINUX_DIR)" $(MAKE_OPTS) modules
+	+$(KERNEL_MAKE) $(PKG_JOBS) \
+		M="$(PKG_BUILD_DIR)" \
+		$(EXTRA_KCONFIG) \
+		modules
 endef
 
 $(eval $(call KernelPackage,rtl837x_gsw))
