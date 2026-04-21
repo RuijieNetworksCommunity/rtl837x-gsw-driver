@@ -374,19 +374,7 @@ static int of_extra_init(struct rtk_gsw *gsw)
 	return 0;
 }
 
-typedef struct rtl837x_pnswap_cfg_s {
-	uint8_t sds0_rx_swap:1;
-	uint8_t sds0_tx_swap:1;
-
-	uint8_t sds1_rx_swap:1;
-	uint8_t sds1_tx_swap:1;
-
-	uint8_t phy_mdi_reverse:1;
-	uint8_t phy_tx_polarity_swap:1;
-	uint8_t RESERVED:2;
-} rtl837x_pnswap_cfg_t;
-
-static int rtl8372n_hw_init(struct rtk_gsw *gsw, rtl837x_pnswap_cfg_t swap_cfg)
+int rtl8372n_hw_init(struct rtk_gsw *gsw, rtl837x_pnswap_cfg_t swap_cfg)
 {
 
 	unsigned int ret;
@@ -742,33 +730,32 @@ static int rtl837x_gsw_probe(struct mdio_device *mdiodev)
 			!rtl837x_sdsmode(sdsmode_name, &sdsmode))
 		gsw->sds1mode = sdsmode;
 
-	rtl837x_pnswap_cfg_t swap_cfg;
-	memset(&swap_cfg,0,sizeof(rtl837x_pnswap_cfg_t));
+	memset(&(gsw->swap_cfg),0,sizeof(rtl837x_pnswap_cfg_t));
 	if (of_property_read_bool(np, "sds0-rx-swap"))
-		swap_cfg.sds0_rx_swap = 1;
+		gsw->swap_cfg.sds0_rx_swap = 1;
 	if (of_property_read_bool(np, "sds0-tx-swap"))
-		swap_cfg.sds0_tx_swap = 1;
+		gsw->swap_cfg.sds0_tx_swap = 1;
 	if (of_property_read_bool(np, "sds1-rx-swap"))
-		swap_cfg.sds1_rx_swap = 1;
+		gsw->swap_cfg.sds1_rx_swap = 1;
 	if (of_property_read_bool(np, "sds1-tx-swap"))
-		swap_cfg.sds1_tx_swap = 1;
+		gsw->swap_cfg.sds1_tx_swap = 1;
 
 	if (of_property_read_bool(np, "phy-mdi-reverse"))
-		swap_cfg.phy_mdi_reverse = 1;
+		gsw->swap_cfg.phy_mdi_reverse = 1;
 	if (of_property_read_bool(np, "phy-tx-polarity-swap"))
-		swap_cfg.phy_tx_polarity_swap = 1;
+		gsw->swap_cfg.phy_tx_polarity_swap = 1;
 
 	gsw->mdio_addr = mdiodev->addr;
 	gsw->mib_counters = rtl837x_mib_counters;
 	gsw->num_mib_counters = ARRAY_SIZE(rtl837x_mib_counters);
 
 	dev_info(gsw->dev, "rtl837x dev info:smi-addr:%d cpu_port:%d serdes-mode:%d swap_cfg:0x%x\n",
-						 gsw->mdio_addr, gsw->cpu_port, gsw->sds0mode, *(uint8_t*)&swap_cfg);
+						 gsw->mdio_addr, gsw->cpu_port, gsw->sds0mode, *(uint8_t*)&(gsw->swap_cfg));
 
 	dev_set_drvdata(dev, gsw);
 	gsw_regmap = gsw->map;
 
-	ret = rtl8372n_hw_init(gsw, swap_cfg);
+	ret = rtl8372n_hw_init(gsw, gsw->swap_cfg);
 	if (ret)
 	{
 		dev_err(gsw->dev, "rtl8372n_hw_init failed, ret=%d\n",ret);

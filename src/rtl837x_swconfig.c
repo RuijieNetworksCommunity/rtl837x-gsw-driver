@@ -479,6 +479,29 @@ static int rtl837x_sw_reset_sdsx(struct switch_dev *dev, const struct switch_att
 	return 0;
 }
 
+static int rtl837x_sw_reset_hw(struct switch_dev *dev, const struct switch_attr *attr, struct switch_val *val)
+{
+	struct rtk_gsw *gsw = container_of(dev, struct rtk_gsw, sw_dev);
+
+	cancel_delayed_work_sync(&gsw->status_check_work);
+
+	int ret = rtl8372n_hw_init(gsw, gsw->swap_cfg);
+	if (ret)
+	{
+		dev_err(gsw->dev, "rtl8372n_hw_init failed, ret=%d\n",ret);
+		return -ENODEV;
+	}
+
+	queue_delayed_work_on(smp_processor_id(), 
+					system_wq, 
+					&gsw->status_check_work, 
+					msecs_to_jiffies(gsw->default_work_delay_ms)
+				);
+
+	rtl837x_sw_apply_config(dev);
+	return 0;
+}
+
 static struct switch_attr rtl832n_globals[] = {
 	{
 		.type = SWITCH_TYPE_INT,
@@ -497,6 +520,11 @@ static struct switch_attr rtl832n_globals[] = {
 		.name = "reset_serdes",
 		.description = "Reset Serdes",
 		.set = rtl837x_sw_reset_sdsx,
+	}, {
+		.type = SWITCH_TYPE_NOVAL,
+		.name = "reset_hw",
+		.description = "HW reset switch",
+		.set = rtl837x_sw_reset_hw,
 	}
 };
 

@@ -42,6 +42,18 @@ struct rtl837x_sdsmode_map {
 	const char *name;
 };
 
+typedef struct rtl837x_pnswap_cfg_s {
+	uint8_t sds0_rx_swap:1;
+	uint8_t sds0_tx_swap:1;
+
+	uint8_t sds1_rx_swap:1;
+	uint8_t sds1_tx_swap:1;
+
+	uint8_t phy_mdi_reverse:1;
+	uint8_t phy_tx_polarity_swap:1;
+	uint8_t RESERVED:2;
+} rtl837x_pnswap_cfg_t;
+
 struct rtk_gsw {
  	struct device *dev;
  	struct mii_bus *bus;
@@ -60,6 +72,7 @@ struct rtk_gsw {
 
 	rtk_sds_mode_t sds0mode;
 	rtk_sds_mode_t sds1mode;
+	rtl837x_pnswap_cfg_t swap_cfg;
 
 	struct switch_dev sw_dev;
 	unsigned int cpu_port;
@@ -88,6 +101,8 @@ struct rtk_gsw {
 	int default_work_delay_ms;
 	struct delayed_work status_check_work;
 };
+
+extern int rtl8372n_hw_init(struct rtk_gsw *gsw, rtl837x_pnswap_cfg_t swap_cfg);
 
 extern int rtl837x_debug_proc_init(void);
 extern int rtl837x_debug_proc_deinit(void);
