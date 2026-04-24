@@ -395,7 +395,7 @@ static int rtl837x_sw_set_port_flowcontrol(struct switch_dev *dev, const struct 
 
 	rtk_uint32 port_mapped = PORT_MAPPED(port);
 	if (port_mapped == UTP_PORT3 ||
-		port_mapped != UTP_PORT8) return -EINVAL;
+		port_mapped == UTP_PORT8) return -EINVAL;
 
 	rtk_uint32 enabled = val->value.i;
 	if (enabled)
@@ -542,7 +542,7 @@ static struct switch_attr rtl837x_port[] = {
 		.set = rtl837x_sw_set_port_flowcontrol,
 		.get = rtl837x_sw_get_port_flowcontrol,
 	},
-#ifdef CONFIG_RTL837x_GSW_PORT_MIB_FEATURE
+#ifdef RTL837x_GSW_PORT_MIB_FEATURE
 	{
 		.type = SWITCH_TYPE_STRING,
 		.name = "mib",
