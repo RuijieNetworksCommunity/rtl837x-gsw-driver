@@ -517,6 +517,9 @@ static void rtl837x_status_check_work_func(struct work_struct *work)
 
 	rtk_port_status_t port_status;
 
+	if (!gsw->ethernet_master)
+		return;
+
 	rtk_port_macStatus_get(PORT_MAPPED(gsw->cpu_port), &port_status);
 	if (!port_status.link)
 	{
@@ -674,13 +677,17 @@ static int rtl837x_gsw_probe(struct mdio_device *mdiodev)
 	dev_info(dev,"start rtl837x_gsw_probe");
 
 	ethernet = of_parse_phandle(np, "ethernet", 0);
-	if (!ethernet) 
-		return -EINVAL;
-
-	master = of_find_net_device_by_node(ethernet);
-	of_node_put(ethernet);
-	if (!master)
-		return -EPROBE_DEFER;
+	if (ethernet)
+	{
+		master = of_find_net_device_by_node(ethernet);
+		of_node_put(ethernet);
+		if (!master)
+			return -EPROBE_DEFER;
+	}else
+	{
+		master = NULL;
+		dev_warn(dev, "node 'ethernet' is not set\n");
+	}
 
 	gsw = devm_kzalloc(dev, sizeof(struct rtk_gsw), GFP_KERNEL);
 	if (!gsw)
