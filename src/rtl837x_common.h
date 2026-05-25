@@ -96,6 +96,8 @@ struct rtk_gsw {
 	unsigned int cpu_port;
 	struct net_device *ethernet_master;
 	struct sfp_bus *sfp_bus;
+	struct delayed_work sfp_start_work;
+	bool sfp_present;
 
 	struct rtl837x_mib_counter *mib_counters;
 	unsigned int num_mib_counters;

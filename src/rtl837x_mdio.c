@@ -552,19 +552,58 @@ static void rtl837x_status_check_work_func(struct work_struct *work)
 					);
 }
 
-/* unused */
+
 static void rtl837x_sfp_attach(void *upstream, struct sfp_bus *bus)
 {
 	struct rtk_gsw *gsw = upstream;
-	dev_info(gsw->dev, "SFP module attach\n");
+	dev_dbg(gsw->dev, "SFP module attach\n");
 }
 
-/* unused */
 static void rtl837x_sfp_detach(void *upstream, struct sfp_bus *bus)
 {
 	struct rtk_gsw *gsw = upstream;
-	dev_info(gsw->dev, "SFP module detach\n");
+	dev_dbg(gsw->dev, "SFP module detach\n");
 }
+
+int rtl837x_sfp_module_start(void *upstream)
+{
+	struct rtk_gsw *gsw = upstream;
+	dev_dbg(gsw->dev, "SFP module start\n");
+	return 0;
+}
+
+void rtl837x_sfp_module_stop(void *upstream)
+{
+	struct rtk_gsw *gsw = upstream;
+	dev_dbg(gsw->dev, "SFP module stop\n");
+}
+
+/*
+void rtl837x_sfp_link_down(void *upstream)
+{
+	struct rtk_gsw *gsw = upstream;
+	dev_dbg(gsw->dev, "SFP module link down\n");
+}
+
+void rtl837x_sfp_link_up(void *upstream)
+{
+	struct rtk_gsw *gsw = upstream;
+	dev_dbg(gsw->dev, "SFP module link up\n");
+}
+
+int rtl837x_sfp_connect_phy(void *upstream, struct phy_device *phy)
+{
+	struct rtk_gsw *gsw = upstream;
+	dev_dbg(gsw->dev, "SFP module connect phy\n");
+	return 0;
+}
+
+void rtl837x_sfp_disconnect_phy(void *upstream, struct phy_device *phy)
+{
+	struct rtk_gsw *gsw = upstream;
+	dev_dbg(gsw->dev, "SFP module disconnect phy\n");
+}
+*/
 
 static int rtl837x_sfp_module_insert(void *upstream, const struct sfp_eeprom_id *id)
 {
@@ -603,13 +642,21 @@ static int rtl837x_sfp_module_insert(void *upstream, const struct sfp_eeprom_id 
 		return -EINVAL;
 	}
 
+	gsw->sfp_present = true;
 	rtk_sdsMode_set(1, gsw->sds1mode);
+	
+	queue_delayed_work_on(smp_processor_id(), 
+					system_wq, 
+					&gsw->sfp_start_work, 
+					msecs_to_jiffies(250)
+				);
 	return 0;
 }
 
 static void rtl837x_sfp_module_remove(void *upstream)
 {
 	struct rtk_gsw *gsw = upstream;
+	gsw->sfp_present = false;
 	dev_info(gsw->dev, "SFP module remove\n");
 
 	USE_SERDESMODE(1, SERDES_OFF);
@@ -621,13 +668,21 @@ static const struct sfp_upstream_ops sfp_ops = {
 	.detach = rtl837x_sfp_detach,
 	.module_insert = rtl837x_sfp_module_insert,
 	.module_remove = rtl837x_sfp_module_remove,
-	// .module_start = rtl837x_sfp_module_start,
-	// .module_stop = rtl837x_sfp_module_stop,
+	.module_start = rtl837x_sfp_module_start,
+	.module_stop = rtl837x_sfp_module_stop,
 	// .link_up = rtl837x_sfp_link_up,
 	// .link_down = rtl837x_sfp_link_down,
 	// .connect_phy = rtl837x_sfp_connect_phy,
 	// .disconnect_phy = rtl837x_sfp_disconnect_phy,
 };
+
+static void rtl837x_sfp_auto_start_work_func(struct work_struct *work)
+{
+	struct rtk_gsw *gsw = container_of(work, struct rtk_gsw, sfp_start_work.work);
+	dev_info(gsw->dev, "SFP module auto start\n");
+	if (gsw->sfp_bus && gsw->sfp_present)
+		sfp_upstream_start(gsw->sfp_bus);
+}
 
 static int rtl837x_sfp_probe(struct rtk_gsw *gsw)
 {
@@ -641,6 +696,9 @@ static int rtl837x_sfp_probe(struct rtk_gsw *gsw)
 	}
 
 	gsw->sfp_bus = bus;
+	gsw->sfp_present = false;
+
+	INIT_DELAYED_WORK(&gsw->sfp_start_work, rtl837x_sfp_auto_start_work_func);
 
 	ret = sfp_bus_add_upstream(bus, gsw, &sfp_ops);
 	sfp_bus_put(bus);
